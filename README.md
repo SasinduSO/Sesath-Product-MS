@@ -1,59 +1,136 @@
-# WaterlilyInventory — Inventory Management Application
+# WaterlilyInventory — Enterprise Inventory Management System
 
-An enterprise-ready inventory management system built with **ASP.NET Core MVC (.NET 10 LTS)**, **Entity Framework Core Code-First**, and **Microsoft SQL Server 2022 Express**.  
-Features a responsive, modern UI inspired by SESATH PRODUCTS branding, real-time client-side AJAX CRUD, in-memory caching with asynchronous delegate callbacks, structured rolling file logging via Serilog, and five SQL Server stored-procedure analytics reports.
+An inventory management application built with **ASP.NET Core MVC (.NET 10 LTS)**, **Entity Framework Core**, and **Microsoft SQL Server 2022**.
+
+The system provides catalog management, real-time client-side AJAX interactions, bulk spreadsheet imports (.CSV and Excel .XLSX) with pre-import validation previews, multi-tiered in-memory caching with delegate callbacks, structured rolling file logging, and SQL Server stored-procedure analytics.
+
+---
+
+## Key Features
+
+- **Product Inventory Management**:
+  - Full CRUD operations executed asynchronously via jQuery AJAX without full-page reloads.
+  - Client-side live search, category filtering, stock status indicators (In Stock, Low Stock, Out of Stock), dynamic column sorting, and pagination.
+  - Strict input validation enforcing boundary constraints, allowed categories, and decimal precision.
+- **Bulk Spreadsheet Import (.CSV & Excel .XLSX)**:
+  - Ingest product data in bulk via RFC 4180 CSV or OpenXML Excel (`.xlsx`) files.
+  - Zero-dependency spreadsheet parser utilizing .NET BCL `ZipArchive` and `XDocument`.
+  - Built-in sample CSV generator with demo data and blank templates.
+  - Interactive validation preview: automatically segregates acceptable records from rejected records with field-level cell error highlighting.
+  - User review and confirmation workflow prior to batch database persistence.
+- **SQL Server Analytics & Reporting**:
+  - Category Average Price (`AVG(Price)`).
+  - Highest Inventory Value Category (evaluating cumulative valuation with deterministic ranking).
+  - Total Category Valuation with Chart.js bar visualizations and accessible data tables.
+  - Low-Stock Alerts with configurable unit thresholds (`Stock < @Threshold`).
+  - Top 5 Most Expensive Products (`ORDER BY Price DESC, Id ASC`).
+- **Resilient Caching Strategy**:
+  - Multi-tier caching abstraction (`IAppCache`) utilizing `IMemoryCache`.
+  - 5-minute absolute expiration for list and report queries; indefinite caching for detail queries.
+  - Atomic generation tokens to eliminate stale concurrent reads.
+  - Post-commit cache invalidation upon confirmed database writes.
+- **Enterprise Observability & Security**:
+  - Structured daily rolling file logging powered by Serilog with correlation `traceId`.
+  - Global exception middleware returning uniform JSON envelopes or friendly error views without exposing database details.
+  - Anti-forgery validation (`RequestVerificationToken`) across all state-mutating requests.
 
 ---
 
 ## Technology Stack
 
-| Layer | Component | Choice & Version |
+| Layer | Component | Technology / Version |
 |---|---|---|
-| **Runtime & Framework** | Target Framework | .NET 10 LTS (`net10.0`, SDK `10.0.401`) |
-| **Web Presentation** | Server Web Framework | ASP.NET Core MVC with Razor Views |
-| **ORM & Data Access** | Database Provider | EF Core 10.0.12 (`Microsoft.EntityFrameworkCore.SqlServer`) |
-| **Tooling** | EF Core CLI Tools | Local `dotnet-ef` 10.0.12 (pinned in `dotnet-tools.json`) |
+| **Runtime & Framework** | Target Framework | .NET 10 LTS (`net10.0`, C# 13) |
+| **Web Presentation** | Server Framework | ASP.NET Core MVC with Razor Views |
+| **ORM & Persistence** | Data Access | Entity Framework Core 10 (`Microsoft.EntityFrameworkCore.SqlServer`) |
 | **Database** | Database Engine | Microsoft SQL Server 2022 Express (`.\SQLEXPRESS`) |
-| **Logging** | Structured Logging | Serilog (`Serilog.AspNetCore` 9.0.0, `Serilog.Sinks.File` 6.0.0) |
-| **Frontend Libraries** | Client Utilities | jQuery 3.7.1, Bootstrap 5.3.3 |
-| **Notifications & Dialogs** | Toastr & SweetAlert2 | Toastr 2.1.4, SweetAlert2 11.14.5 |
-| **Data Visualization** | Charting Engine | Chart.js 4.4.6 (UMD bundle) |
+| **Logging** | Structured Logging | Serilog (`Serilog.AspNetCore`, `Serilog.Sinks.File`) |
+| **Frontend Utilities** | Client Libraries | jQuery 3.7.1, Bootstrap 5.3.3 |
+| **UI Components** | Notifications & Modals | Toastr 2.1.4, SweetAlert2 11.14.5 |
+| **Visualizations** | Charting Engine | Chart.js 4.4.6 |
+| **Test Automation** | Unit & Component Tests | MSTest v4, Moq 4.20 |
 
 ---
 
-## Architectural Principles & Strict Separation
+## Architecture & Design Patterns
 
-The system strictly enforces a unidirectional data-access hierarchy:
+The application follows clean architectural principles with strict unidirectional data flow:
+
 ```
-Browser (jQuery AJAX) 
-  → Controller (Web presentation & status code mapping)
-    → Service Interface (Business validation, caching policies, outcome contracts)
-      → Repository Interface (Data materialization, writes, stored procedures)
-        → EF Core DbContext & SQL Server 2022
+Browser Client (jQuery AJAX / HTML5)
+  ↓
+Controllers (HTTP routing, model validation, status code mapping)
+  ↓
+Service Layer (Domain validation, outcome mapping, caching policy, delegate callbacks)
+  ↓
+Repository Layer (Entity queries, writes, parameterized stored procedures)
+  ↓
+Entity Framework Core & SQL Server 2022
 ```
 
-- **Zero Boundary Leaks**: Controllers and Views **never** access DbContext, Repositories, SQL queries, or the memory cache directly.
-- **Async/Await Throughout**: Every actual database I/O operation (queries, stored-procedure executions, commits) is purely asynchronous and propagates `CancellationToken`.
-- **Explicit Outcome Contracts**:
-  - Services return `OperationResult<T>` with typed outcomes (`Success`, `ValidationFailure`, `NotFound`, `Conflict`, `PersistenceFailure`). Bare `bool`, `void`, or raw entities are forbidden.
-  - Repositories return `RepositoryWriteResult<T>` (`Created`, `Updated`, `Unchanged`, `Deleted`, `NotFound`, `Conflict`).
-  - Web endpoints return a uniform camelCase JSON envelope: `{ isSuccess, data, message, errorCode, validationErrors, traceId }`.
-- **In-Memory Caching & Delegates**:
-  - `IAppCache` abstraction backed by `IMemoryCache`.
-  - **Cached Mode**: 5-minute absolute expiration (repeated hits do not extend). Used for product lists and all report datasets.
-  - **CachedLong Mode**: Long-lived entries with `CacheItemPriority.NeverRemove` (no time expiry; lives until mutation or application restart). Used for product detail lookups.
-  - **Async Delegate Callback (`AsyncDataFactory<T>`)**: Invoked only on cache misses; resolves fresh data within the active request scope without capturing scoped dependencies into singletons.
-  - **Atomic Generation Guard**: Generation counter advanced on invalidation prevents concurrent slow reads from storing stale data.
-  - **Post-Commit Invalidation**: Clears affected cache keys only after confirmed successful database commits.
-- **Exception Ownership**:
-  - Expected domain/validation failures are resolved by Services and mapped to HTTP status codes by Controllers.
-  - Unexpected infrastructure defects escape to `GlobalExceptionHandlingMiddleware`, which returns safe HTTP 500 JSON envelopes or MVC error pages without exposing stack traces, SQL, or credentials.
+### Core Architecture Rules
+
+1. **Strict Layer Separation**:
+   - Controllers and Views never access `DbContext`, repositories, or memory cache directly.
+   - Services never reference `HttpContext`, `IActionResult`, or EF query APIs.
+2. **Asynchronous Call Chains**:
+   - Every database I/O operation is asynchronous (`async/await`) and propagates a `CancellationToken`.
+3. **Explicit Outcome Contracts**:
+   - Service operations return `OperationResult<T>` with explicit outcomes (`Success`, `ValidationFailure`, `NotFound`, `Conflict`, `PersistenceFailure`).
+   - Repository writes return `RepositoryWriteResult<T>` (`Created`, `Updated`, `Unchanged`, `Deleted`, `NotFound`, `Conflict`).
+   - Web API endpoints return a standardized JSON envelope:
+     ```json
+     {
+       "isSuccess": true,
+       "data": { ... },
+       "message": "Operation completed successfully.",
+       "errorCode": null,
+       "validationErrors": null,
+       "traceId": "00-4bf92f3577b34da6a3ce929d0e0e4736-00"
+     }
+     ```
+4. **Caching & Asynchronous Delegate Callbacks**:
+   - Service layer passes an `AsyncDataFactory<T>` delegate callback to `IAppCache`.
+   - Delegates execute only on cache misses within the active request scope, preventing singleton capture of scoped repository instances.
+   - Affected cache entries are invalidated only after confirmed database commits.
 
 ---
 
-## Application Configuration & Branding
+## Business Logic & Data Specifications
 
-Configured in `src/WaterlilyInventory.Web/appsettings.json`:
+### Product Entity
+
+| Field | Type | Rules & Constraints |
+|---|---|---|
+| `Id` | `int` | Primary Key, Identity (auto-incrementing) |
+| `Name` | `string` | Required, maximum 150 characters, non-blank after trimming, alphanumeric with spaces and hyphens only |
+| `Category` | `string` | Required, maximum 100 characters, restricted to allowed catalog categories (`Accessories`, `Electronics`, `Office Furniture`, `Stationery`) |
+| `Price` | `decimal(18,2)` | Required, zero or positive, maximum 2 decimal places |
+| `Stock` | `int` | Required, non-negative whole integer |
+
+### Category Normalization
+- Category strings are trimmed, internal whitespaces collapsed, and formatted to Title Case.
+- Historical alias *"Stationary"* is standardized to *"Stationery"* to prevent fragmented grouping in stored-procedure reports.
+
+### Bulk Import Workflow
+1. **Extraction**: Accepts `.csv` or `.xlsx` files up to 10MB. Strips currency symbols (`$`, `€`, `£`) and thousand separators.
+2. **Validation**: Evaluates each row against domain rules. Identifies missing fields, special characters, excessive decimal precision, and negative values.
+3. **Preview**: Displays summary counts (Total, Acceptable, Rejected) and highlights individual invalid cells.
+4. **Approval**: Users review acceptable items and confirm import via SweetAlert2. Valid records are persisted in a single transaction via `CreateRangeAsync`, followed by cache invalidation.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (SDK `10.0.401` or later)
+- [Microsoft SQL Server 2022](https://www.microsoft.com/en-us/sql-server/sql-server-downloads) (Express edition instance named `SQLEXPRESS` or LocalDB)
+- `sqlcmd` utility (included with SQL Server command-line tools)
+
+### Configuration
+
+Connection strings and branding options are configured in `src/WaterlilyInventory.Web/appsettings.json`:
 
 ```json
 {
@@ -67,122 +144,94 @@ Configured in `src/WaterlilyInventory.Web/appsettings.json`:
 }
 ```
 
-- **Branding**: Displays `SESATH PRODUCTS` with a navy angular brandmark in the top header.
-- **Currency**: Configured globally as `USD` (`$`), formatted client-side using `Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })`.
+> **Note:** For LocalDB, set `"DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WaterlilyInventoryDb;Trusted_Connection=True;MultipleActiveResultSets=true"`.
 
 ---
 
-## Stored-Procedure Reports & Approved Calculations
+### Step-by-Step Installation
 
-All analytics calculations execute directly inside SQL Server stored procedures managed via EF Core Code-First migrations (`AddStoredProcedures`):
+Execute the following commands from the repository root:
 
-1. **Average Price per Category (`dbo.usp_Product_AveragePriceByCategory`)**:
-   - Calculates non-weighted arithmetic mean: `AVG(Price)` per category.
-2. **Highest Stock Value Category (`dbo.usp_Product_HighestStockValueCategory`)**:
-   - **Approved Interpretation**: Evaluates greatest cumulative monetary value: `SUM(Price * CAST(Stock AS BIGINT))`.
-   - Uses `DENSE_RANK() OVER (ORDER BY InventoryValue DESC)` to return **all tied leading categories** with deterministic ordering.
-3. **Inventory Valuation by Category (`dbo.usp_Product_InventoryValuationByCategory`)**:
-   - Computes `SUM(Price * Stock)` and total units `SUM(Stock)` per category.
-   - Frontend renders a Chart.js bar chart and an accessible table with Grand Total summation.
-4. **Low-Stock Alert (`dbo.usp_Product_LowStock`)**:
-   - Accepts `@Threshold INT` (default 10). Filters strictly by `Stock < @Threshold`.
-   - Products with stock equal to the threshold are strictly **not** low-stock items.
-5. **Top 5 Most Expensive Products (`dbo.usp_Product_TopFiveMostExpensive`)**:
-   - Returns `TOP (5)` ordered by `Price DESC, Id ASC`.
-
----
-
-## Seed Dataset & Verification Baseline
-
-The database is seeded with 13 representative products across 4 categories:
-
-| Category | Seeded Products | Total Units | Inventory Valuation | Average Price |
-|---|---|---|---|---|
-| **Electronics** | Laptop Stand ($50, stock 20), USB-C Cable ($20, stock 50), Wireless Mouse ($25, stock 40) | 110 | $3,000.00 | $31.67 |
-| **Office Furniture** | Ergonomic Chair ($200, stock 10), Desk Lamp ($50, stock 11), Footrest ($50, stock 9) | 30 | $3,000.00 | $100.00 |
-| **Stationery** | Notebook Set ($15, stock 0), Premium Pen ($30, stock 30), Sticky Notes Pack ($6, stock 100) | 130 | $1,500.00 | $17.00 |
-| **Accessories** | Desk Mat ($25, stock 10), Cable Organizer ($10, stock 20), Monitor Wipe ($5, stock 10), Mechanical Keyboard ($150, stock 0) | 40 | $500.00 | $47.50 |
-| **Baseline Total** | **13 Products** | **310 Units** | **$8,000.00** | — |
-
-### Baseline Expected Metrics
-- **Highest Stock Value**: `Electronics` ($3,000.00) and `Office Furniture` ($3,000.00) are **tied leaders**.
-- **Low-Stock Alert (Threshold = 10)**: Returns 3 products: `Notebook Set` (stock 0), `Mechanical Keyboard` (stock 0), and `Footrest` (stock 9). Items with stock 10 (`Ergonomic Chair`, `Desk Mat`, `Monitor Wipe`) are strictly excluded.
-- **Top 5 Most Expensive**: `Ergonomic Chair` ($200), `Mechanical Keyboard` ($150), `Laptop Stand` ($50), `Desk Lamp` ($50), `Footrest` ($50).
-
----
-
-## Reproducible Setup & Run Instructions
-
-### 1. Prerequisites
-- **.NET 10 SDK** (v10.0.401 installed)
-- **SQL Server 2022 Express** instance named `SQLEXPRESS` (or SQL Server LocalDB)
-
-### 2. Connection String Configuration
-- **For SQL Server Express (`.\SQLEXPRESS`)**:
-  ```json
-  "Server=.\\SQLEXPRESS;Database=WaterlilyInventoryDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True"
-  ```
-- **For Windows LocalDB (`(localdb)\mssqllocaldb`)**:
-  ```json
-  "Server=(localdb)\\mssqllocaldb;Database=WaterlilyInventoryDb;Trusted_Connection=True;MultipleActiveResultSets=true"
-  ```
-
-### 3. Step-by-Step CLI Commands
-
+#### 1. Restore Tooling & Dependencies
 ```powershell
-# Step A: Restore pinned local dotnet-ef tool manifest
+# Restore local dotnet-ef manifest
 dotnet tool restore
 
-# Step B: Restore NuGet dependencies
+# Restore NuGet packages
 dotnet restore
-
-# Step C: Build the solution
-dotnet build
-
-# Step D: Apply EF Core migrations (creates database, tables, and 5 stored procedures)
-dotnet ef database update --project src/WaterlilyInventory.Web
-
-# Step E: Seed demo dataset (idempotent — skips if records exist)
-sqlcmd -S .\SQLEXPRESS -E -d WaterlilyInventoryDb -i src\WaterlilyInventory.Web\Data\Scripts\DemoSeedData.sql
-
-# Step F: Run the application
-dotnet run --project src/WaterlilyInventory.Web --urls "http://127.0.0.1:5126"
 ```
 
-Open your browser to: **`http://127.0.0.1:5126`** (automatically redirects to `/products`).
-
----
-
-## Application Routes & Endpoints
-
-| Method | Route | Description | Expected HTTP Status |
-|---|---|---|---|
-| `GET` | `/` | Root redirect to `/products` | `302 Found` → `200 OK` |
-| `GET` | `/products` | Product Inventory management page | `200 OK` (Razor View) |
-| `GET` | `/products/data` | Product collection as JSON | `200 OK` (Cached 5 min) |
-| `GET` | `/products/{id}/data` | Single product by ID | `200 OK` (CachedLong) or `404` |
-| `POST` | `/products` | Create product from form data | `201 Created` with Location |
-| `POST` | `/products/{id}/update` | Update existing product | `200 OK` (or `400`/`404`/`409`) |
-| `POST` | `/products/{id}/delete` | Delete product | `200 OK` with `{ deletedId }` |
-| `GET` | `/reports` | Analytics Reporting Dashboard page | `200 OK` (Razor View) |
-| `GET` | `/reports/data?threshold=10`| All 5 report datasets as JSON | `200 OK` (Cached 5 min) |
-
----
-
-## Structured Logging & Observability
-
-- **Sink**: Structured rolling file logs written to `src/WaterlilyInventory.Web/Logs/log-.txt`.
-- **Policy**: Daily rolling intervals, 14-day retention, 10MB per file limit, rolling file naming.
-- **Log Contents**:
-  - Request logging with HTTP method, path, status, and duration in ms.
-  - Stored-procedure executions logging procedure name, parameters, execution duration in ms, and row count.
-  - Cache invalidation events logging affected product IDs and cleared scopes.
-  - Safe error details with correlation `traceId`. No credentials or passwords ever logged.
-
-Inspect live logs in PowerShell:
+#### 2. Build Solution
 ```powershell
-Get-Content -Tail 25 src/WaterlilyInventory.Web/Logs/log-*.txt
+dotnet build
 ```
+
+#### 3. Apply Database Migrations
+Creates the `WaterlilyInventoryDb` database, schema, and all five analytical stored procedures:
+```powershell
+dotnet ef database update --project src/WaterlilyInventory.Web
+```
+
+#### 4. Seed Demo Data (Optional)
+Populate the database with initial catalog products:
+```powershell
+sqlcmd -S .\SQLEXPRESS -E -d WaterlilyInventoryDb -i src\WaterlilyInventory.Web\Data\Scripts\DemoSeedData.sql
+```
+
+#### 5. Launch Application
+```powershell
+dotnet run --project src/WaterlilyInventory.Web
+```
+
+Once started, navigate to:
+- **Product Inventory**: `http://localhost:5267/products`
+- **Analytics Dashboard**: `http://localhost:5267/reports`
+
+---
+
+## API & Route Reference
+
+| Method | Route | Description | Response Type |
+|---|---|---|---|
+| `GET` | `/` | Root URL; redirects to `/products` | `302 Found` |
+| `GET` | `/products` | Product inventory management page | HTML Razor View |
+| `GET` | `/products/data` | Retrieves all catalog products | JSON (`ApiResponse<IReadOnlyList<ProductDto>>`) |
+| `GET` | `/products/{id}/data` | Retrieves single product details | JSON (`ApiResponse<ProductDto>`) |
+| `POST` | `/products` | Creates a new product | JSON (`ApiResponse<ProductDto>`), `201 Created` |
+| `POST` | `/products/{id}/update` | Updates an existing product | JSON (`ApiResponse<ProductDto>`), `200 OK` |
+| `POST` | `/products/{id}/delete` | Deletes a product by ID | JSON (`ApiResponse<DeleteProductResultDto>`), `200 OK` |
+| `GET` | `/products/sample-csv` | Downloads sample CSV template (`?withDemoData=true\|false`) | File (`text/csv`) |
+| `POST` | `/products/bulk-preview` | Validates uploaded spreadsheet | JSON (`ApiResponse<BulkProductPreviewDto>`) |
+| `POST` | `/products/bulk-import` | Commits approved records | JSON (`ApiResponse<BulkProductImportResultDto>`) |
+| `GET` | `/reports` | Analytics dashboard page | HTML Razor View |
+| `GET` | `/reports/data?threshold=10` | Executes stored procedures and returns report datasets | JSON (`ApiResponse<ReportDashboardDto>`) |
+
+---
+
+## Automated Test Suite
+
+The solution includes an automated test suite located in `tests/WaterlilyInventory.UnitTests`.
+
+- **Framework**: MSTest with Moq mocking.
+- **Coverage**: 167 unit and component tests verifying domain validation boundaries, CRUD operations, concurrency handling, cache generation guards, spreadsheet parsing (CSV/XLSX), and stored-procedure reporting logic.
+
+Run the test suite from the repository root:
+```powershell
+dotnet test
+```
+
+---
+
+## Observability & Logging
+
+- **Logging Provider**: Serilog structured logging.
+- **Destination**: Daily rolling text files located in `src/WaterlilyInventory.Web/Logs/log-.txt`.
+- **Policy**: 14-day retention limit, 10MB file size ceiling with rollover.
+- **Audit Points**:
+  - HTTP requests with endpoint path, status codes, and latency in milliseconds.
+  - Stored-procedure executions logging procedure name, parameter values, execution time, and record count.
+  - Cache hits, misses, and post-commit invalidation scopes.
+  - Masked errors accompanied by correlation `traceId`. Credentials and connection secrets are strictly suppressed.
 
 ---
 
@@ -191,122 +240,39 @@ Get-Content -Tail 25 src/WaterlilyInventory.Web/Logs/log-*.txt
 ```
 WaterlilyInventory/
 ├── WaterlilyInventory.slnx                   # Solution file
-├── global.json                               # Pinned .NET SDK 10.0.401
-├── dotnet-tools.json                         # Pinned dotnet-ef 10.0.12
-├── AGENTS.md                                 # Persistent project rules and constraints
-├── README.md                                 # This documentation file
-├── .gitignore                                # Standard exclusions (bin, obj, logs)
-├── docs/
-│   ├── ProjectPlan.md                        # Four-section architectural plan
-│   ├── Architecture.md                       # Comprehensive design, lifecycles, and data flows
-│   ├── BuildStatus.md                        # Stage-by-stage implementation tracker
-│   ├── Verification.md                       # Complete live verification evidence
-│   ├── TestingBacklog.md                     # Specification for deferred MSTest/Moq tests
-│   ├── Migrations_Idempotent.sql             # Standalone SQL migration script
-│   └── reference/
-│       ├── assessment.pdf                    # Preserved original assessment
-│       └── ui-theme.jpeg                     # Preserved frontend reference image
-└── src/
-    └── WaterlilyInventory.Web/
-        ├── WaterlilyInventory.Web.csproj     # MVC Web Project (.NET 10)
-        ├── Program.cs                        # Startup, DI registration, pipeline configuration
-        ├── appsettings.json                  # Connection strings, Serilog, AppConfig
-        ├── appsettings.Development.json
-        ├── Common/
-        │   ├── Exceptions/
-        │   │   └── PersistenceException.cs   # Safe domain wrapper for persistence failures
-        │   └── Results/
-        │       ├── ApiResponse.cs            # Uniform JSON envelope
-        │       ├── ApiResponseExtensions.cs  # Controller mapping extensions
-        │       ├── OperationResult.cs        # Service outcome contract
-        │       └── RepositoryWriteResult.cs  # Repository write outcome contract
-        ├── Data/
-        │   ├── ApplicationDbContext.cs       # Scoped EF Core context
-        │   ├── DatabaseSeeder.cs             # Migration & seed helper
-        │   ├── Configurations/
-        │   │   └── ProductConfiguration.cs   # Fluent API mapping and check constraints
-        │   ├── Migrations/
-        │   │   ├── 20261011144950_InitialCreate.cs
-        │   │   └── 20261011145854_AddStoredProcedures.cs
-        │   └── Scripts/
-        │       └── DemoSeedData.sql          # Idempotent demo dataset
-        ├── Domain/
-        │   └── Entities/
-        │       ├── IEntity.cs                # Entity contract with integer identity PK
-        │       └── Product.cs                # Product domain entity
-        ├── DTOs/
-        │   ├── Products/
-        │   │   ├── CreateProductDto.cs       # Validated create input DTO
-        │   │   ├── UpdateProductDto.cs       # Validated update input DTO
-        │   │   ├── ProductDto.cs             # Immutable read-only product DTO
-        │   │   └── DeleteProductResultDto.cs # Deletion outcome DTO
-        │   └── Reports/
-        │       ├── CategoryAveragePriceDto.cs
-        │       ├── HighestStockValueCategoryDto.cs
-        │       ├── CategoryInventoryValuationDto.cs
-        │       ├── LowStockProductDto.cs
-        │       ├── TopExpensiveProductDto.cs
-        │       └── ReportDashboardDto.cs     # Dashboard aggregation DTO
-        ├── Repositories/
-        │   ├── Interfaces/
-        │   │   ├── IGenericRepository.cs     # Generic async CRUD contract
-        │   │   └── IProductRepository.cs     # Stored-procedure analytics contract
-        │   └── Implementations/
-        │       ├── GenericRepository.cs      # EF Core async generic implementation
-        │       └── ProductRepository.cs      # Parameterized SP execution and logging
-        ├── Services/
-        │   ├── Interfaces/
-        │   │   ├── IProductService.cs        # Product CRUD service contract
-        │   │   └── IReportService.cs         # Reporting dashboard service contract
-        │   └── Implementations/
-        │       ├── ProductService.cs         # Validation, caching, delegates, invalidation
-        │       └── ReportService.cs          # Sequential SP execution, threshold validation
-        ├── Caching/
-        │   ├── IAppCache.cs                  # Cache abstraction interface
-        │   ├── AppCache.cs                   # IMemoryCache implementation with generation guard
-        │   └── CacheKeys.cs                  # Typed, namespaced cache keys
-        ├── Delegates/
-        │   └── AsyncDataFactory.cs           # Generic async delegate callback
-        ├── Filters/
-        │   └── AjaxAntiforgeryFilter.cs      # Global CSRF filter returning JSON 400
-        ├── Middleware/
-        │   └── GlobalExceptionHandlingMiddleware.cs # Fallback unhandled error middleware
-        ├── Controllers/
-        │   ├── HomeController.cs             # Redirects GET / to /products
-        │   ├── ProductsController.cs         # Thin product MVC and AJAX controller
-        │   └── ReportsController.cs          # Thin reports MVC and AJAX controller
-        ├── Views/
-        │   ├── _ViewImports.cshtml
-        │   ├── _ViewStart.cshtml
-        │   ├── Shared/
-        │   │   ├── _Layout.cshtml            # Themed layout shell (header, nav rail)
-        │   │   └── Error.cshtml              # Safe MVC error view
-        │   ├── Products/
-        │   │   └── Index.cshtml              # Product table, search, filters, modals
-        │   └── Reports/
-        │       └── Index.cshtml              # 5 report panels, Chart.js, accessible tables
-        └── wwwroot/
-            ├── css/
-            │   └── site.css                  # Custom theme variables and card styling
-            ├── js/
-            │   ├── site.js                   # Antiforgery AJAX setup, currency formatting
-            │   ├── products.js               # Client filtering, sorting, pagination, CRUD
-            │   └── reports.js                # Report rendering, Chart.js, race condition guard
-            └── lib/                          # Pinned local client libraries
-                ├── bootstrap/
-                ├── jquery/
-                ├── toastr/
-                ├── sweetalert2/
-                └── chartjs/
+├── global.json                               # Pinned .NET SDK version
+├── dotnet-tools.json                         # Local EF Core CLI tooling
+├── README.md                                 # Documentation
+├── src/
+│   └── WaterlilyInventory.Web/
+│       ├── Common/
+│       │   ├── Exceptions/                   # Domain persistence exceptions
+│       │   └── Results/                      # Standardized response envelopes & outcome types
+│       ├── Data/
+│       │   ├── ApplicationDbContext.cs       # EF Core DbContext
+│       │   ├── Configurations/               # Entity type configurations & Fluent API mappings
+│       │   ├── Migrations/                   # EF Core Code-First schema & stored procedure migrations
+│       │   └── Scripts/                      # Idempotent demo database seeding script
+│       ├── Domain/
+│       │   └── Entities/                     # Core domain entities (Product, IEntity)
+│       ├── DTOs/
+│       │   ├── Products/                     # Product input, output, and bulk import DTOs
+│       │   └── Reports/                      # Stored-procedure reporting DTOs
+│       ├── Caching/                          # IAppCache implementation and cache policies
+│       ├── Delegates/                        # Generic async data factory delegate callbacks
+│       ├── Repositories/                     # Generic repository and product-specific data layer
+│       ├── Services/                         # Business logic, validation, bulk import, and reporting
+│       ├── Middleware/                       # Global exception handling middleware
+│       ├── Filters/                          # Global AJAX anti-forgery filter
+│       ├── Controllers/                      # MVC and AJAX API controllers
+│       ├── Views/                            # Razor Views (Products, Reports, Shared layout)
+│       └── wwwroot/                          # Client assets (CSS, JS, Bootstrap, Toastr, Chart.js)
+└── tests/
+    └── WaterlilyInventory.UnitTests/         # MSTest suite covering Services, Caching, and Parsing
 ```
 
 ---
 
-## Known Limitations & Next Steps
+## License
 
-1. **Client-Side Filtering on Small Catalog**:
-   - For this assessment dataset (13 products), search, category filtering, sorting, and pagination operate on the collection loaded via `GET /products/data`. On enterprise catalogs (> 10,000 items), server-side pagination with SQL `OFFSET/FETCH` would be introduced.
-2. **Single Display Currency**:
-   - Products are priced in a single configurable display currency (`USD`). Multi-currency conversion is not implemented.
-3. **Automated Testing Suite (MSTest & Moq)**:
-   - Full unit and component test suite implemented and verified in [`tests/WaterlilyInventory.UnitTests/`](tests/WaterlilyInventory.UnitTests/README.md). Covers real `ProductService`, `ReportService`, in-memory `AppCache`, deterministic clock expiration, and generation race protection (157 passed tests, 100% service line coverage). See [docs/TestingResults.md](docs/TestingResults.md) for full execution evidence.
+This project is licensed under the MIT License.
