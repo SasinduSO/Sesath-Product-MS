@@ -1,0 +1,439 @@
+/* WaterlilyInventory — Modern Theme Direction
+   Colors, typography, layout, and component styling
+   Aligned with approved project rules (AGENTS.md) */
+
+:root {
+    --app-bg: #F2F5F9;
+    --surface: #FFFFFF;
+    --primary: #123F8A;
+    --primary-hover: #0F3270;
+    --text: #202834;
+    --muted: #667383;
+    --border: #DFE5EC;
+    --chart-blue: #2DA9E1;
+    --success-badge-bg: #E8F5E9;
+    --success-badge-text: #2E7D32;
+    --warning-badge-bg: #FFF8E1;
+    --warning-badge-text: #F57F17;
+    --danger-badge-bg: #FFEBEE;
+    --danger-badge-text: #C62828;
+    --card-radius: 14px;
+    --btn-radius: 8px;
+    --card-shadow: 0 2px 6px rgba(18, 63, 138, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    --card-shadow-hover: 0 6px 16px rgba(18, 63, 138, 0.08);
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--app-bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Header */
+.app-header {
+    height: 64px;
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+}
+
+.brand-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: var(--text);
+}
+
+.brand-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, #2056B3 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 5px rgba(18, 63, 138, 0.25);
+}
+
+.brand-text {
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+    color: var(--primary);
+}
+
+.header-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.currency-badge {
+    background-color: var(--app-bg);
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+}
+
+/* Layout container */
+.app-wrapper {
+    display: flex;
+    min-height: calc(100vh - 64px);
+}
+
+/* Left Navigation Rail */
+.app-sidebar {
+    width: 220px;
+    background-color: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 0.75rem;
+    flex-shrink: 0;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--btn-radius);
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: all 0.15s ease-in-out;
+}
+
+.sidebar-link:hover {
+    color: var(--primary);
+    background-color: #F0F4FA;
+}
+
+.sidebar-link.active {
+    color: var(--primary);
+    background-color: #E7EFF9;
+    font-weight: 600;
+}
+
+.sidebar-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+/* Main Content Area */
+.app-content {
+    flex-grow: 1;
+    padding: 2rem 2.5rem;
+    overflow-y: auto;
+}
+
+/* Cards & Panels */
+.app-card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.app-card:hover {
+    box-shadow: var(--card-shadow-hover);
+}
+
+.card-title-lg {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+}
+
+.card-subtitle {
+    font-size: 0.875rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+}
+
+/* Custom Buttons */
+.btn-primary-custom {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: #FFFFFF;
+    font-weight: 600;
+    border-radius: var(--btn-radius);
+    padding: 0.5rem 1.25rem;
+    transition: all 0.15s ease-in-out;
+}
+
+.btn-primary-custom:hover, .btn-primary-custom:focus {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+    color: #FFFFFF;
+}
+
+.btn-outline-custom {
+    background-color: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 500;
+    border-radius: var(--btn-radius);
+    padding: 0.5rem 1rem;
+    transition: all 0.15s ease-in-out;
+}
+
+.btn-outline-custom:hover {
+    background-color: var(--app-bg);
+    border-color: #CCD6E2;
+}
+
+/* Stock Badges */
+.stock-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.stock-in-stock {
+    background-color: var(--success-badge-bg);
+    color: var(--success-badge-text);
+}
+
+.stock-low-stock {
+    background-color: var(--warning-badge-bg);
+    color: var(--warning-badge-text);
+}
+
+.stock-out-of-stock {
+    background-color: var(--danger-badge-bg);
+    color: var(--danger-badge-text);
+}
+
+/* Tables */
+.app-table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.app-table th {
+    background-color: #FAFBFD;
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    border-top: none;
+}
+
+.app-table td {
+    padding: 0.9rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.app-table tr:hover td {
+    background-color: #F8FAFD;
+}
+
+/* Modals */
+.modal-content {
+    border-radius: var(--card-radius);
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .app-wrapper {
+        flex-direction: column;
+    }
+    .app-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 0.75rem 1rem;
+    }
+    .sidebar-nav {
+        flex-direction: row;
+        justify-content: center;
+    }
+    .app-content {
+        padding: 1rem;
+    }
+}
+
+/* Sortable Table Headers */
+.sortable-th {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.sortable-th:hover, .sortable-th:focus {
+    background-color: #F0F4FA;
+    outline: none;
+}
+
+.sortable-th .sort-icon {
+    font-size: 0.8rem;
+    margin-left: 0.35rem;
+    color: #94A3B8;
+}
+
+.sortable-th.sorted-asc .sort-icon,
+.sortable-th.sorted-desc .sort-icon {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Action Buttons in Data Tables */
+.action-btn-group {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.btn-action {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background-color: var(--surface);
+    color: var(--text);
+    transition: all 0.15s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-action:hover {
+    background-color: var(--app-bg);
+}
+
+.btn-action-edit:hover {
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-action-delete:hover {
+    color: var(--danger-badge-text);
+    border-color: #E57373;
+    background-color: var(--danger-badge-bg);
+}
+
+/* Report 2: Highest Value Card */
+.highest-val-card {
+    background: linear-gradient(135deg, #F8FAFD 0%, #EFF4FA 100%);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.15rem;
+    margin-bottom: 0.75rem;
+}
+
+.highest-val-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.highest-val-amount {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text);
+}
+
+/* Report 5: Top 5 Expensive Ranked List */
+.rank-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    transition: background-color 0.15s ease-in-out;
+}
+
+.rank-row:last-child {
+    border-bottom: none;
+}
+
+.rank-row:hover {
+    background-color: #F8FAFD;
+}
+
+.rank-number-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: var(--app-bg);
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.rank-row:nth-child(1) .rank-number-badge {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #4A3B00;
+    border-color: #ECC94B;
+}
+
+.rank-row:nth-child(2) .rank-number-badge {
+    background: linear-gradient(135deg, #E2E8F0 0%, #CBD5E1 100%);
+    color: #334155;
+    border-color: #94A3B8;
+}
+
+.rank-row:nth-child(3) .rank-number-badge {
+    background: linear-gradient(135deg, #ED8936 0%, #DD6B20 100%);
+    color: #FFFFFF;
+    border-color: #C05621;
+}

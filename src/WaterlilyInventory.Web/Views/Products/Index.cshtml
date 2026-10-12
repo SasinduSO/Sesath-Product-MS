@@ -1,0 +1,242 @@
+@{
+    ViewData["Title"] = "Product Inventory";
+}
+
+<!-- Page Header and Actions -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="card-title-lg">Product Inventory</h1>
+        <p class="card-subtitle mb-0">Manage your catalog, track stock availability, and update pricing.</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary-custom d-inline-flex align-items-center gap-2" id="btnAddProduct">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>Add Product</span>
+        </button>
+    </div>
+</div>
+
+<!-- Search, Filters and Threshold Context Card -->
+<div class="app-card mb-4">
+    <div class="row g-3 align-items-center">
+        <!-- Search Input -->
+        <div class="col-lg-4 col-md-6">
+            <label for="productSearchInput" class="form-label small fw-semibold text-muted mb-1">Search Products</label>
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0 text-muted" id="search-addon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </span>
+                <input type="text" class="form-control border-start-0" id="productSearchInput" placeholder="Filter by name..." aria-label="Search products" aria-describedby="search-addon" autocomplete="off" />
+                <button class="btn btn-outline-secondary border-start-0 border" type="button" id="btnClearSearch" title="Clear search" style="display: none;">
+                    &times;
+                </button>
+            </div>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="col-lg-3 col-md-6">
+            <label for="categoryFilterSelect" class="form-label small fw-semibold text-muted mb-1">Category</label>
+            <select class="form-select" id="categoryFilterSelect" aria-label="Filter by category">
+                <option value="">All Categories</option>
+            </select>
+        </div>
+
+        <!-- Stock Status Filter with Threshold Explanation -->
+        <div class="col-lg-3 col-md-6">
+            <label for="stockStatusFilterSelect" class="form-label small fw-semibold text-muted mb-1">
+                Stock Status <span class="fw-normal text-muted" title="Low stock threshold is fixed at 10 units for inventory management">(Threshold &lt; 10)</span>
+            </label>
+            <select class="form-select" id="stockStatusFilterSelect" aria-label="Filter by stock status">
+                <option value="">All Stock Statuses</option>
+                <option value="in_stock">In Stock (&ge; 10)</option>
+                <option value="low_stock">Low Stock (1 &ndash; 9)</option>
+                <option value="out_of_stock">Out of Stock (0)</option>
+            </select>
+        </div>
+
+        <!-- Items per page & Reset -->
+        <div class="col-lg-2 col-md-6 text-lg-end">
+            <label for="pageSizeSelect" class="form-label small fw-semibold text-muted mb-1">Page Size</label>
+            <div class="d-flex align-items-center justify-content-lg-end gap-2">
+                <select class="form-select form-select-sm" id="pageSizeSelect" style="width: 80px;" aria-label="Items per page">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                </select>
+                <button type="button" class="btn btn-outline-custom btn-sm" id="btnResetFilters" title="Reset all filters">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="mt-2 pt-2 border-top d-flex justify-content-between align-items-center text-muted small">
+        <span id="filterSummaryText">Showing client-filtered results from loaded dataset.</span>
+        <span id="productCountBadge" class="fw-semibold">Loading...</span>
+    </div>
+</div>
+
+<!-- Products Data Table Card -->
+<div class="app-card p-0 overflow-hidden mb-4">
+    <div class="table-responsive">
+        <table class="app-table" id="productsTable" aria-label="Product Inventory Table">
+            <thead>
+                <tr>
+                    <th scope="col" class="sortable-th text-nowrap" data-sort="id" style="width: 80px;" title="Click to sort by ID" tabindex="0" role="button">
+                        ID <span class="sort-icon" aria-hidden="true">&updownarrow;</span>
+                    </th>
+                    <th scope="col" class="sortable-th" data-sort="name" title="Click to sort by Name" tabindex="0" role="button">
+                        Product Name <span class="sort-icon" aria-hidden="true">&updownarrow;</span>
+                    </th>
+                    <th scope="col" class="sortable-th" data-sort="category" style="width: 170px;" title="Click to sort by Category" tabindex="0" role="button">
+                        Category <span class="sort-icon" aria-hidden="true">&updownarrow;</span>
+                    </th>
+                    <th scope="col" class="sortable-th text-end" data-sort="price" style="width: 130px;" title="Click to sort by Price" tabindex="0" role="button">
+                        Price <span class="sort-icon" aria-hidden="true">&updownarrow;</span>
+                    </th>
+                    <th scope="col" class="sortable-th text-end" data-sort="stock" style="width: 110px;" title="Click to sort by Stock Quantity" tabindex="0" role="button">
+                        Stock <span class="sort-icon" aria-hidden="true">&updownarrow;</span>
+                    </th>
+                    <th scope="col" class="text-center" style="width: 150px;">Status</th>
+                    <th scope="col" class="text-center" style="width: 160px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="productsTableBody">
+                <tr id="tablePlaceholderRow">
+                    <td colspan="7" class="text-center py-5 text-muted">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                        <span>Loading product inventory...</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    <div class="p-3 border-top bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="text-muted small" id="paginationInfo">
+            Showing 0 to 0 of 0 entries
+        </div>
+        <nav aria-label="Product table pagination">
+            <ul class="pagination pagination-sm mb-0" id="paginationControls">
+                <!-- Dynamically generated page buttons -->
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- Add / Edit Product Modal Container -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="productModalLabel">Add New Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="productForm" novalidate>
+                <div class="modal-body p-4">
+                    <input type="hidden" id="productId" name="Id" value="0" />
+
+                    <!-- General Server Error Alert inside Modal -->
+                    <div class="alert alert-danger d-none" id="modalGeneralError" role="alert"></div>
+
+                    <!-- Name Field -->
+                    <div class="mb-3">
+                        <label for="productName" class="form-label fw-semibold">Product Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="productName" name="Name" maxlength="150" required placeholder="e.g. Ergonomic Keyboard" autocomplete="off" />
+                        <div class="invalid-feedback" id="nameError">Product name cannot contain special characters (only letters, numbers, spaces, and hyphens).</div>
+                    </div>
+
+                    <!-- Category Dropdown Field -->
+                    <div class="mb-3">
+                        <label for="productCategory" class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                        <select class="form-select" id="productCategory" name="Category" required aria-label="Product Category">
+                            <option value="">Select a category</option>
+                            <option value="Accessories">Accessories</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Office Furniture">Office Furniture</option>
+                            <option value="Stationary">Stationary</option>
+                        </select>
+                        <div class="invalid-feedback" id="categoryError">Please select a category from the list.</div>
+                    </div>
+
+                    <!-- Price & Stock Fields -->
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="productPrice" class="form-label fw-semibold">Price ($ USD) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="productPrice" name="Price" step="0.01" min="0" required placeholder="0.00" />
+                            <div class="invalid-feedback" id="priceError">Price must be zero or positive (max 2 decimal places, no letters).</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="productStock" class="form-label fw-semibold">Stock Quantity <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="productStock" name="Stock" step="1" min="0" required placeholder="0" />
+                            <div class="invalid-feedback" id="stockError">Stock quantity must be a whole number (no letters or decimals).</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal" id="btnCancelProductModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary-custom d-inline-flex align-items-center gap-2" id="btnSaveProduct">
+                        <span class="spinner-border spinner-border-sm d-none" id="saveSpinner" role="status" aria-hidden="true"></span>
+                        <span id="saveBtnText">Save Product</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Product Details Modal Container -->
+<div class="modal fade" id="productDetailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="detailsModalLabel">Product Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                    <div>
+                        <span class="text-muted small">Product ID</span>
+                        <h4 class="fw-bold mb-0 text-primary" id="detailsId">#0</h4>
+                    </div>
+                    <div id="detailsStatusBadge">
+                        <!-- Stock status badge -->
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-semibold text-uppercase">Product Name</label>
+                    <div class="fs-5 fw-semibold text-dark" id="detailsName">&mdash;</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-semibold text-uppercase">Category</label>
+                    <div class="fs-6 text-dark" id="detailsCategory">&mdash;</div>
+                </div>
+                <div class="row g-3 pt-2 border-top">
+                    <div class="col-6">
+                        <label class="form-label text-muted small fw-semibold text-uppercase">Unit Price</label>
+                        <div class="fs-5 fw-bold text-dark" id="detailsPrice">$0.00</div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label text-muted small fw-semibold text-uppercase">Available Stock</label>
+                        <div class="fs-5 fw-bold text-dark" id="detailsStock">0 units</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal" id="btnCloseDetailsModal">Close</button>
+                <button type="button" class="btn btn-primary-custom" id="btnEditFromDetails">Edit Product</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/products.js" asp-append-version="true"></script>
+}

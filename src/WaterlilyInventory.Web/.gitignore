@@ -1,0 +1,35 @@
+## Build and compilation outputs
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+
+## Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+
+## Visual Studio Code / IDEs
+.vscode/
+.idea/
+*.swp
+*.*~
+
+## Local Logs
+Logs/
+**/Logs/
+*.log
+
+## User secrets and local environment
+appsettings.*.local.json
+secrets.json
+.env
+
+## OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## Antigravity / Agent artifacts
+.gemini/

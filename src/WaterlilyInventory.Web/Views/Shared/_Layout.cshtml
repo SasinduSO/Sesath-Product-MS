@@ -1,0 +1,81 @@
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+@{
+    var brandName = Configuration["AppConfig:BrandName"] ?? "SESATH PRODUCTS";
+    var currency = Configuration["AppConfig:Currency"] ?? "USD";
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — @brandName</title>
+
+    <!-- CSS Dependencies in verified order -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/toastr/toastr.min.css" />
+    <link rel="stylesheet" href="~/lib/sweetalert2/sweetalert2.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <!-- Hidden Antiforgery Token for AJAX mutation requests -->
+    @Html.AntiForgeryToken()
+
+    <!-- Top White Header -->
+    <header class="app-header">
+        <a href="/products" class="brand-wrapper" title="@brandName">
+            <div class="brand-mark">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+            </div>
+            <span class="brand-text">@brandName</span>
+        </a>
+        <div class="header-meta">
+            <span class="currency-badge">Currency: <strong>@currency</strong></span>
+        </div>
+    </header>
+
+    <!-- Main Container: Sidebar Rail + Content -->
+    <div class="app-wrapper">
+        <!-- Narrow Left Navigation Rail -->
+        <nav class="app-sidebar" aria-label="Main Navigation">
+            <div class="sidebar-nav">
+                <a href="/products" class="sidebar-link @(currentController == "Products" ? "active" : "")" title="Product Inventory">
+                    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    <span>Inventory</span>
+                </a>
+                <a href="/reports" class="sidebar-link @(currentController == "Reports" ? "active" : "")" title="Reporting Dashboard">
+                    <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    <span>Reports</span>
+                </a>
+            </div>
+        </nav>
+
+        <!-- Main Content View -->
+        <main class="app-content" role="main">
+            @RenderBody()
+        </main>
+    </div>
+
+    <!-- Pinned Local Client Libraries in Strict Loading Order -->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/lib/toastr/toastr.min.js"></script>
+    <script src="~/lib/sweetalert2/sweetalert2.all.min.js"></script>
+    <script src="~/lib/chartjs/chart.umd.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

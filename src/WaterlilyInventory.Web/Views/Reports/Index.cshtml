@@ -1,0 +1,209 @@
+@{
+    ViewData["Title"] = "Reporting Dashboard";
+}
+
+<!-- Page Header and Threshold Control -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="card-title-lg">Reporting Dashboard</h1>
+        <p class="card-subtitle mb-0">Real-time inventory metrics, valuation aggregations, and stock alerts powered by SQL Server stored procedures.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2 bg-white p-2 border rounded shadow-sm">
+        <label for="thresholdInput" class="form-label mb-0 fw-semibold text-muted small text-nowrap">
+            Low-Stock Threshold:
+        </label>
+        <div class="input-group input-group-sm" style="width: 150px;">
+            <input type="number" class="form-control" id="thresholdInput" value="10" min="0" step="1" aria-label="Low stock threshold" />
+            <button class="btn btn-primary-custom" type="button" id="btnApplyThreshold" title="Execute low-stock procedure with this threshold">
+                <span class="spinner-border spinner-border-sm d-none" id="thresholdSpinner" role="status" aria-hidden="true"></span>
+                <span>Apply</span>
+            </button>
+        </div>
+        <button class="btn btn-outline-custom btn-sm" type="button" id="btnRefreshAllReports" title="Reload all report datasets from server">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            <span class="d-none d-sm-inline ms-1">Refresh</span>
+        </button>
+    </div>
+</div>
+
+<!-- Threshold Validation Feedback -->
+<div class="alert alert-danger d-none py-2 px-3 small mb-3" id="thresholdAlert" role="alert"></div>
+
+<!-- Row 1: Category Inventory Valuation (Chart + Summary) & Highest Stock Value Category Panel -->
+<div class="row g-4 mb-4">
+    <!-- Valuation Chart Container -->
+    <div class="col-lg-8">
+        <div class="app-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h2 class="card-title-lg mb-0" style="font-size: 1.15rem;">Category Inventory Valuation</h2>
+                    <p class="card-subtitle mb-0 small">Visual distribution of inventory monetary value across categories.</p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-light text-primary border fs-6 fw-bold" id="totalValuationBadge">$0.00 Total</span>
+                </div>
+            </div>
+            <div style="position: relative; height: 280px; width: 100%;">
+                <canvas id="categoryValuationChart" aria-label="Bar chart showing inventory valuation by category" role="img"></canvas>
+                <div id="chartLoadingOverlay" class="d-flex align-items-center justify-content-center position-absolute top-0 start-0 w-100 h-100 bg-white bg-opacity-75 d-none">
+                    <div class="spinner-border text-primary spinner-border-sm me-2" role="status"></div>
+                    <span class="text-muted small">Loading valuation chart...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Highest Value Category Panel (Report 2) -->
+    <div class="col-lg-4">
+        <div class="app-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h2 class="card-title-lg mb-0" style="font-size: 1.15rem;">Highest Stock Value</h2>
+                    <span class="badge bg-primary text-white" id="highestValueTieBadge" style="display: none;">Tied Leaders</span>
+                </div>
+                <p class="card-subtitle mb-3 small">
+                    Category with greatest cumulative value: <code>SUM(Price &times; Stock)</code>.
+                </p>
+                <div id="highestValueContainer" class="py-2">
+                    <div class="text-center py-4 text-muted">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                        <span class="small">Calculating highest value...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="pt-3 border-top mt-3 text-muted small d-flex justify-content-between align-items-center">
+                <span>Stored Proc: <code>usp_Product_HighestStockValueCategory</code></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Average Price & Accessible Valuation Table -->
+<div class="row g-4 mb-4">
+    <!-- Report 1: Average Price per Category -->
+    <div class="col-lg-6">
+        <div class="app-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="card-title-lg mb-0" style="font-size: 1.15rem;">Average Price per Category</h2>
+                <span class="badge bg-light text-muted border small" id="avgPriceCountBadge">0 Categories</span>
+            </div>
+            <p class="card-subtitle mb-3 small">Non-weighted arithmetic mean per category: <code>AVG(Price)</code>.</p>
+            <div class="table-responsive">
+                <table class="app-table" id="avgPriceTable" aria-label="Average Price per Category Table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Category</th>
+                            <th scope="col" class="text-end">Average Unit Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="avgPriceTableBody">
+                        <tr>
+                            <td colspan="2" class="text-center py-4 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                <span class="small">Loading average prices...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report 3 (Accessible Table Alternative): Inventory Valuation by Category -->
+    <div class="col-lg-6">
+        <div class="app-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="card-title-lg mb-0" style="font-size: 1.15rem;">Category Valuation Table</h2>
+                <span class="badge bg-light text-muted border small">Accessible Alternative</span>
+            </div>
+            <p class="card-subtitle mb-3 small">Total inventory units and valuation per category with cumulative grand total.</p>
+            <div class="table-responsive">
+                <table class="app-table" id="valuationTable" aria-label="Inventory Valuation by Category Table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Category</th>
+                            <th scope="col" class="text-end">Total Units</th>
+                            <th scope="col" class="text-end">Inventory Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="valuationTableBody">
+                        <tr>
+                            <td colspan="3" class="text-center py-4 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                <span class="small">Loading valuation table...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot id="valuationTableFoot" class="fw-bold bg-light" style="display: none;">
+                        <tr>
+                            <td>Grand Total</td>
+                            <td class="text-end" id="grandTotalUnits">0 units</td>
+                            <td class="text-end text-primary" id="grandTotalValue">$0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 3: Low-Stock Alert & Top 5 Most Expensive Products -->
+<div class="row g-4 mb-4">
+    <!-- Report 4: Low-Stock Alert -->
+    <div class="col-lg-6">
+        <div class="app-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="card-title-lg mb-0" style="font-size: 1.15rem;">Low-Stock Alert</h2>
+                <span class="badge bg-warning text-dark fw-bold" id="lowStockCountBadge">0 Items</span>
+            </div>
+            <p class="card-subtitle mb-3 small" id="lowStockThresholdExplanation">
+                Products with inventory strictly below <strong id="currentThresholdLabel">10</strong> units (<code>Stock &lt; @@Threshold</code>).
+            </p>
+            <div class="table-responsive">
+                <table class="app-table" id="lowStockTable" aria-label="Low-Stock Products Table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Product Name</th>
+                            <th scope="col">Category</th>
+                            <th scope="col" class="text-end">Stock</th>
+                            <th scope="col" class="text-end">Unit Price</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lowStockTableBody">
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                <span class="small">Evaluating low stock products...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report 5: Top 5 Most Expensive Products -->
+    <div class="col-lg-6">
+        <div class="app-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="card-title-lg mb-0" style="font-size: 1.15rem;">Top 5 Most Expensive</h2>
+                <span class="badge bg-light text-muted border small">Ranked 1 &ndash; 5</span>
+            </div>
+            <p class="card-subtitle mb-3 small">Highest unit price products: <code>ORDER BY Price DESC, Id ASC</code>.</p>
+            <div id="topExpensiveContainer">
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    <span class="small">Loading top expensive items...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/reports.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WaterlilyInventory.Web/WaterlilyInventory.Web.csproj" />
+  </Folder>
+</Solution>
