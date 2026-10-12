@@ -49,6 +49,24 @@ public static class ProductTestBuilder
     };
 
     /// <summary>
+    /// Creates a deterministic collection of domain entities for list queries.
+    /// </summary>
+    public static IReadOnlyList<Product> CreateProductEntities() =>
+    [
+        CreateProduct(101, "Ergonomic Keyboard", "Electronics", 129.99m, 42),
+        CreateProduct(102, "Monitor Riser", "Office Furniture", 35.50m, 15)
+    ];
+
+    /// <summary>
+    /// Creates a deterministic collection of output DTOs representing cached snapshots.
+    /// </summary>
+    public static IReadOnlyList<ProductDto> CreateProductDtos() =>
+    [
+        new ProductDto(101, "Ergonomic Keyboard", "Electronics", 129.99m, 42),
+        new ProductDto(102, "Monitor Riser", "Office Furniture", 35.50m, 15)
+    ];
+
+    /// <summary>
     /// Creates a successful <see cref="RepositoryWriteResult{Product}"/> with <see cref="WriteOutcome.Created"/>.
     /// </summary>
     public static RepositoryWriteResult<Product> CreateSuccessResult(

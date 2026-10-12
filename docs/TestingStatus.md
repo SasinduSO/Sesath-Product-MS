@@ -10,7 +10,7 @@
 | Checkpoint | Description | Status | Discovered | Passed | Failed | Skipped | Last Verified |
 |---|---|---|---|---|---|---|---|
 | **7A** | Inspect contracts, configure MSTest, first test | ✅ COMPLETE | 1 | 1 | 0 | 0 | 2026-10-12 |
-| **7B** | Create and Read Service tests | 🔲 PENDING | — | — | — | — | — |
+| **7B** | Create and Read Service tests | ✅ COMPLETE | 15 | 15 | 0 | 0 | 2026-10-12 |
 | **7C** | Update and Delete Service tests | 🔲 PENDING | — | — | — | — | — |
 | **7D** | Validation boundaries, failures, cancellation | 🔲 PENDING | — | — | — | — | — |
 | **7E** | Cache component & Report Service tests | 🔲 PENDING | — | — | — | — | — |
@@ -44,62 +44,72 @@
 ### 2. Actual Commands Executed & Evidence
 
 ```powershell
-# 1. Project Creation & Template Check
-dotnet new mstest --sdk --test-runner Microsoft.Testing.Platform -o tests/WaterlilyInventory.UnitTests -n WaterlilyInventory.UnitTests
-# Output: The template "MSTest Test Project" was created successfully. Restored in 7.47s.
+dotnet test --project tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj
+# Output: Test run summary: Passed! Total: 1, Failed: 0, Succeeded: 1, Skipped: 0
+```
 
-# 2. Add Project to Solution
-dotnet sln WaterlilyInventory.slnx add tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj
-# Output: Project `tests\WaterlilyInventory.UnitTests\WaterlilyInventory.UnitTests.csproj` added to the solution.
+### 3. Production Fixes Required
+None.
 
-# 3. Add Project Reference
-dotnet add tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj reference src/WaterlilyInventory.Web/WaterlilyInventory.Web.csproj
-# Output: Reference `..\..\src\WaterlilyInventory.Web\WaterlilyInventory.Web.csproj` added to the project.
+### 4. Blockers
+None.
 
-# 4. Add Moq Dependency
-dotnet add tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj package Moq --version 4.20.72
-# Output: Installed Moq 4.20.72, Castle.Core 5.1.1, System.Diagnostics.EventLog 6.0.0. Restored in 2.16s.
+### 5. Next Action
+Proceed to Checkpoint 7B.
 
-# 5. Build Solution
-dotnet build
-# Output: Build succeeded. 0 Warning(s), 0 Error(s).
+---
 
-# 6. Execute Project Tests (Microsoft.Testing.Platform)
+## Checkpoint 7B — Create and Read Service tests
+
+**Status:** ✅ COMPLETE  
+**Date:** 2026-10-12  
+
+### 1. Completed Deliverables & Files
+
+| File | Purpose |
+|---|---|
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceCreateTests.cs` | 4 tests covering valid creation with cache invalidation, blank name validation rejection, safe persistence exception handling with diagnostic suppression, and non-Created repository outcome mapping. |
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceReadTests.cs` | 9 tests (11 executions including DataRows) covering list reads (cache miss with delegate execution, empty database success, persistence failure handling, cache hit bypassing repository) and detail reads (cache miss with full field mapping, missing product 404, invalid ID validation before data access, persistence failure, and long-lived cache mode verification). |
+| `tests/WaterlilyInventory.UnitTests/Common/ProductTestBuilder.cs` | Added deterministic list entity and DTO helpers (`CreateProductEntities`, `CreateProductDtos`). |
+| `tests/WaterlilyInventory.UnitTests/Common/CacheMockExtensions.cs` | Type-safe `CachedAsync` and `CachedLongAsync` miss and hit configuration extensions using genuine `AsyncDataFactory<T>`. |
+| `tests/WaterlilyInventory.UnitTests/README.md` | Documented 15 verified tests, categories, and analyzer guidelines. |
+| `docs/TestingPlan.md` | Updated contract mapping with Stage 7B completed status. |
+| `docs/TestingStatus.md` | This document. |
+| `docs/BuildStatus.md` | Updated build status with Checkpoint 7B test outcomes. |
+
+### 2. Actual Commands Executed & Evidence
+
+```powershell
+# 1. Focused Unit Tests Run (MTP)
 dotnet test --project tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj
 # Output:
 # Running tests from ...\tests\WaterlilyInventory.UnitTests\bin\Debug\net10.0\WaterlilyInventory.UnitTests.dll (net10.0|x64)
 # Test run summary: Passed!
-#   total: 1
+#   total: 15
 #   failed: 0
-#   succeeded: 1
+#   succeeded: 15
 #   skipped: 0
-#   duration: 2s 053ms
+#   duration: 2s 771ms
 
-# 7. Execute Entire Solution Test Suite
+# 2. Entire Solution Test Run
 dotnet test
 # Output:
 # Test run summary: Passed!
-#   total: 1
+#   total: 15
 #   failed: 0
-#   succeeded: 1
+#   succeeded: 15
 #   skipped: 0
-#   duration: 2s 011ms
+#   duration: 1s 938ms
 ```
 
 ### 3. Production Fixes Required
-**None.** The application code in `ProductService.cs` correctly implements all required semantics (input validation, strict repository delegation, error mapping, and cache invalidation on commit).
+**None.** The application implementation in `ProductService.cs` correctly implements all required create and read behaviors, safe exception mapping, and caching contracts.
 
 ### 4. Blockers
 **None.**
 
 ### 5. Next Action
-Proceed to **Prompt 7B — Create and Read Service tests**.
-
----
-
-## Checkpoint 7B — Create and Read Service tests
-**Status:** 🔲 PENDING  
-**Scope:** Expand `ProductServiceCreateTests` with validation failure, persistence exception, and conflict mapping. Implement `ProductServiceReadTests` covering list reads (cache miss with factory, empty repository, persistence failure, cache hit) and detail reads (existing product, missing product 404, invalid ID, persistence failure, long-lived cache key).
+Proceed to **Prompt 7C — Update and Delete Service tests**.
 
 ---
 

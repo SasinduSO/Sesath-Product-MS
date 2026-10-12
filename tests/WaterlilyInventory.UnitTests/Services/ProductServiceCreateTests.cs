@@ -2,7 +2,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WaterlilyInventory.UnitTests.Common;
 using WaterlilyInventory.Web.Caching;
+using WaterlilyInventory.Web.Common.Exceptions;
+using WaterlilyInventory.Web.Common.Results;
 using WaterlilyInventory.Web.Domain.Entities;
+using WaterlilyInventory.Web.DTOs.Products;
 using WaterlilyInventory.Web.Repositories.Interfaces;
 using WaterlilyInventory.Web.Services.Implementations;
 
@@ -23,7 +26,7 @@ public sealed class ProductServiceCreateTests
 
     /// <summary>
     /// Verifies that valid creation input results in a successful Repository write with mapped entity,
-    /// returns an <see cref="WaterlilyInventory.Web.Common.Results.OperationResult{ProductDto}"/> with the generated identity ID,
+    /// returns an <see cref="OperationResult{ProductDto}"/> with the generated identity ID,
     /// and triggers cache invalidation for the shared product and report scope.
     /// </summary>
     [TestMethod]
@@ -88,6 +91,117 @@ public sealed class ProductServiceCreateTests
         _cacheMock.Verify(c => c.InvalidateProductAndReports(generatedId), Times.Once);
 
         _repositoryMock.VerifyNoOtherCalls();
+        _cacheMock.VerifyNoOtherCalls();
+    }
+
+    /// <summary>
+    /// Verifies that representative invalid input (such as blank name) returns a validation failure
+    /// at the service boundary without calling repository write or cache invalidation.
+    /// </summary>
+    [TestMethod]
+    public async Task CreateProduct_BlankName_ReturnsValidationFailureWithoutRepositoryWriteOrInvalidation()
+    {
+        // Arrange
+        var dto = ProductTestBuilder.CreateValidDto(name: "   ");
+        var cancellationToken = new CancellationTokenSource().Token;
+
+        var service = new ProductService(
+            _repositoryMock.Object,
+            _cacheMock.Object,
+            NullLogger<ProductService>.Instance);
+
+        // Act
+        var result = await service.CreateProductAsync(dto, cancellationToken);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsFalse(result.IsSuccess, "Creation with blank name must fail validation.");
+        Assert.AreEqual(ErrorCodes.Validation, result.ErrorCode, "ErrorCode must be Validation.");
+        Assert.IsNull(result.Data, "Failed validation must not return data.");
+        Assert.IsNotNull(result.ValidationErrors, "Validation errors dictionary must be populated.");
+        Assert.IsTrue(result.ValidationErrors.ContainsKey(nameof(Product.Name)), "Validation errors must target the Name field.");
+
+        // Strict mocks verify zero repository writes and zero cache invalidations occurred
+        _repositoryMock.VerifyNoOtherCalls();
+        _cacheMock.VerifyNoOtherCalls();
+    }
+
+    /// <summary>
+    /// Verifies that an expected persistence exception during creation returns the documented safe
+    /// failure result without retrying the write, invalidating caches, or leaking internal diagnostics.
+    /// </summary>
+    [TestMethod]
+    public async Task CreateProduct_PersistenceException_ReturnsSafeFailureWithoutInvalidationOrRetry()
+    {
+        // Arrange
+        const string diagnosticMarker = "SQL Server connection timeout [0x80004005]: Cluster node 10.0.0.1 unreachable";
+        var dto = ProductTestBuilder.CreateValidDto();
+        var cancellationToken = new CancellationTokenSource().Token;
+
+        _repositoryMock
+            .Setup(r => r.CreateAsync(It.IsAny<Product>(), cancellationToken))
+            .ThrowsAsync(new PersistenceException(diagnosticMarker));
+
+        var service = new ProductService(
+            _repositoryMock.Object,
+            _cacheMock.Object,
+            NullLogger<ProductService>.Instance);
+
+        // Act
+        var result = await service.CreateProductAsync(dto, cancellationToken);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsFalse(result.IsSuccess, "Persistence error must yield IsSuccess = false.");
+        Assert.AreEqual(ErrorCodes.PersistenceFailure, result.ErrorCode, "ErrorCode must be PersistenceFailure.");
+        Assert.IsNull(result.Data, "Failed operation must not return data.");
+        Assert.IsNotNull(result.Message, "Safe human-readable failure message must be provided.");
+
+        // Diagnostic suppression: internal marker must NOT appear in public result properties
+        Assert.IsFalse(
+            result.Message!.Contains(diagnosticMarker, StringComparison.OrdinalIgnoreCase),
+            "Internal diagnostic marker must not be leaked in public Message.");
+        Assert.IsFalse(
+            result.ErrorCode!.Contains(diagnosticMarker, StringComparison.OrdinalIgnoreCase),
+            "Internal diagnostic marker must not be leaked in ErrorCode.");
+
+        // Verify single write attempt — service must not attempt an uncoordinated retry
+        _repositoryMock.Verify(r => r.CreateAsync(It.IsAny<Product>(), cancellationToken), Times.Once);
+
+        // Invalidation must not occur on failed write
+        _cacheMock.VerifyNoOtherCalls();
+    }
+
+    /// <summary>
+    /// Verifies that when the repository write returns an unexpected non-Created outcome (e.g., Conflict),
+    /// the service maps it to PersistenceFailure without invalidating caches.
+    /// </summary>
+    [TestMethod]
+    public async Task CreateProduct_RepositoryReturnsFailureOutcome_ReturnsPersistenceFailureWithoutInvalidation()
+    {
+        // Arrange
+        var dto = ProductTestBuilder.CreateValidDto();
+        var cancellationToken = new CancellationTokenSource().Token;
+
+        _repositoryMock
+            .Setup(r => r.CreateAsync(It.IsAny<Product>(), cancellationToken))
+            .ReturnsAsync(RepositoryWriteResult<Product>.ConflictResult());
+
+        var service = new ProductService(
+            _repositoryMock.Object,
+            _cacheMock.Object,
+            NullLogger<ProductService>.Instance);
+
+        // Act
+        var result = await service.CreateProductAsync(dto, cancellationToken);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsFalse(result.IsSuccess, "Non-Created repository outcome must yield failure.");
+        Assert.AreEqual(ErrorCodes.PersistenceFailure, result.ErrorCode, "ErrorCode must be PersistenceFailure.");
+        Assert.IsNull(result.Data);
+
+        _repositoryMock.Verify(r => r.CreateAsync(It.IsAny<Product>(), cancellationToken), Times.Once);
         _cacheMock.VerifyNoOtherCalls();
     }
 }

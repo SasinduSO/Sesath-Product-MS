@@ -548,7 +548,7 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
 
 ## Stage 7 — Unit Testing (MSTest & Moq)
 
-**Status:** 🔄 IN PROGRESS (Stage 7A Complete)  
+**Status:** 🔄 IN PROGRESS (Stages 7A and 7B Complete)  
 **Detailed Tracking:** See [docs/TestingStatus.md](TestingStatus.md) and [docs/TestingPlan.md](TestingPlan.md).
 
 ### Checkpoint 7A — Configure MSTest, Moq & First Meaningful Test
@@ -559,4 +559,13 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
 - **First Test:** `ProductServiceCreateTests.CreateProduct_ValidInput_ReturnsSuccessAndInvalidatesCache`
 - **Execution Results:** 1 discovered, 1 executed, 1 passed, 0 failed, 0 skipped.
 - **Production Fixes Required:** None.
-- **Next Stage:** Checkpoint 7B — Create and Read Service tests.
+
+### Checkpoint 7B — Create and Read Service Tests
+- **Status:** ✅ COMPLETE
+- **Test Suites:** `ProductServiceCreateTests` (4 tests), `ProductServiceReadTests` (9 tests / 11 executions)
+- **Execution Results:** 15 discovered, 15 executed, 15 passed, 0 failed, 0 skipped.
+- **Behaviors Verified:**
+  - Create: valid creation with commit-then-invalidate ordering, validation failure without repository write, safe persistence exception handling with diagnostic suppression, and conflict write outcome mapping.
+  - Read: full list cache miss executing factory delegate against repository, successful empty collection handling, persistence failure handling without fake empty collections, cache hit bypassing repository queries, detail read cache miss with exact field mapping, missing product 404, invalid ID validation before data access, detail persistence exception suppression, and detail queries strictly using `CachedLongAsync` with Id-specific keys.
+- **Production Fixes Required:** None.
+- **Next Stage:** Checkpoint 7C — Update and Delete Service tests.

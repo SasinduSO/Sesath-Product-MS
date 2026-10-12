@@ -66,8 +66,8 @@ The unit-testing phase strictly enforces the boundary between service-level orch
 
 | Stage | Focus Area | Deliverables |
 |---|---|---|
-| **7A** | Plan, Test Project Configuration, Discovery Verification | - `docs/TestingPlan.md`<br>- `tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj`<br>- Test project `README.md`<br>- First meaningful test: `CreateProduct_ValidInput_ReturnsSuccessAndInvalidatesCache`<br>- `docs/TestingStatus.md` |
-| **7B** | Create & Read Operations | - `ProductServiceCreateTests`<br>- `ProductServiceReadTests` (cache hits, misses, empty lists, not found) |
+| **7A** | Plan, Test Project Configuration, Discovery Verification | ✅ COMPLETE (`CreateProduct_ValidInput_ReturnsSuccessAndInvalidatesCache`, initial runner verified) |
+| **7B** | Create & Read Operations | ✅ COMPLETE (15 tests verified: 4 create tests + 9 read tests with parameter expansion) |
 | **7C** | Update & Delete Operations | - `ProductServiceUpdateTests` (changed, unchanged, not found, conflict)<br>- `ProductServiceDeleteTests` (delete, not found, ordering guard) |
 | **7D** | Validation Matrix, Error Policy, Cancellation | - Parameterized validation boundary tests (names, categories, price precision, stock)<br>- Exception masking & diagnostic suppression<br>- `CancellationToken` propagation tests |
 | **7E** | Cache Infrastructure & Report Service | - 7E.1: Service cache mode contracts (`Cached` vs. `CachedLong`)<br>- 7E.2: `AppCache` component tests with in-memory cache and generation tracking<br>- 7E.3: `ReportService` dashboard aggregation, ties, and sequential execution |

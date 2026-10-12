@@ -52,7 +52,8 @@ tests/WaterlilyInventory.UnitTests/
 │   ├── CacheMockExtensions.cs      # SetupCachedMiss, SetupCachedHit helpers using AsyncDataFactory<T>
 │   └── ProductTestBuilder.cs       # Deterministic builders for DTOs, entities, and write results
 ├── Services/
-│   └── ProductServiceCreateTests.cs# First verified test: CreateProduct_ValidInput_ReturnsSuccessAndInvalidatesCache
+│   ├── ProductServiceCreateTests.cs# Creation workflow, validation failure, persistence exception, safe error mapping
+│   └── ProductServiceReadTests.cs  # List/detail reads, cache hits/misses, delegate execution, empty collections, 404
 ├── MSTestSettings.cs               # Assembly parallelization policy (MethodLevel)
 ├── WaterlilyInventory.UnitTests.csproj
 └── README.md                       # This documentation file
@@ -71,7 +72,7 @@ tests/WaterlilyInventory.UnitTests/
 
 ---
 
-## 5. First Meaningful Test: Checkpoint 7A
+## 5. Checkpoint 7A — First Meaningful Test
 
 - **Test Class:** `ProductServiceCreateTests`
 - **Test Method:** `CreateProduct_ValidInput_ReturnsSuccessAndInvalidatesCache`
@@ -87,7 +88,29 @@ tests/WaterlilyInventory.UnitTests/
 
 ---
 
-## 6. Troubleshooting
+## 6. Checkpoint 7B — Create & Read Service Tests (15 Tests Verified)
+
+### ProductServiceCreateTests (4 tests)
+- `CreateProduct_ValidInput_ReturnsSuccessAndInvalidatesCache`: Verified creation success, entity mapping, repository write, and cache invalidation.
+- `CreateProduct_BlankName_ReturnsValidationFailureWithoutRepositoryWriteOrInvalidation`: Verified field validation rejection, null data, no repository write, and no cache invalidation.
+- `CreateProduct_PersistenceException_ReturnsSafeFailureWithoutInvalidationOrRetry`: Verified database exception suppression, generic safe message, diagnostic marker suppression, single write attempt, and no cache invalidation.
+- `CreateProduct_RepositoryReturnsFailureOutcome_ReturnsPersistenceFailureWithoutInvalidation`: Verified non-Created write outcome (Conflict) maps to PersistenceFailure without cache invalidation.
+
+### ProductServiceReadTests (9 tests / 11 executions)
+- `GetAllProducts_CacheMiss_ExecutesFactoryAgainstRepositoryAndReturnsMappedDtos`: Cache miss on `product:list` executes factory delegate against repository mock, maps entities to DTOs, returns success.
+- `GetAllProducts_EmptyRepository_ReturnsSuccessfulEmptyListNotNotFound`: Empty database returns `IsSuccess = true` with 0 items (never NotFound).
+- `GetAllProducts_RepositoryThrowsPersistenceException_ReturnsSafeFailureNotFabricatedEmptyList`: Exception during read returns safe PersistenceFailure, suppressing internal diagnostics and avoiding fake empty lists.
+- `GetAllProducts_CacheHit_ReturnsCachedSnapshotWithoutRepositoryAccess`: Cache hit returns pre-stored DTOs; zero database calls made (verified via strict mock).
+- `GetProductById_CacheMiss_ExistingProduct_ReturnsSuccessWithAllFields`: Detail read on cache miss executes factory, queries repository by Id, returns mapped DTO with exact fields.
+- `GetProductById_CacheMiss_MissingProduct_ReturnsNotFound`: Repository returning null maps to `OperationResult.NotFound` with descriptive message.
+- `GetProductById_InvalidId_ZeroOrNegative_ReturnsValidationFailureWithoutDataAccess` (3 test cases): `id = 0`, `-1`, `-999` fail validation before cache or repository interaction.
+- `GetProductById_PersistenceException_ReturnsSafeFailureWithoutLeakage`: Read failure maps to safe PersistenceFailure, diagnostic marker suppressed.
+- `GetProductById_UsesLongLivedCacheModeAndIdSpecificKey`: Verifies detail reads specifically invoke `CachedLongAsync` with Id-specific key and NEVER invoke 5-minute `CachedAsync`.
+
+---
+
+## 7. Troubleshooting
 
 - **CS8619 / Nullability Warnings**: When configuring `IAppCache.CachedAsync<T>`, the return type is `Task<T?>`. The helper in `CacheMockExtensions.cs` uses `async (key, factory, token) => (T?)await factory(token)` to ensure type safety.
+- **MSTEST0037 Analyzer Compliance**: Use MSTest's specialized assertion methods (`Assert.HasCount`, `Assert.IsEmpty`, `Assert.Contains`) for collection and string assertions rather than generic `Assert.AreEqual` / `Assert.IsTrue`.
 - **Microsoft.Testing.Platform Runner**: Configured in `global.json` under `"test": { "runner": "Microsoft.Testing.Platform" }`. Use `dotnet test --project <path>` rather than combining with legacy VSTest switches.
