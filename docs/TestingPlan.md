@@ -69,7 +69,7 @@ The unit-testing phase strictly enforces the boundary between service-level orch
 | **7A** | Plan, Test Project Configuration, Discovery Verification | ✅ COMPLETE (`CreateProduct_ValidInput_ReturnsSuccessAndInvalidatesCache`, initial runner verified) |
 | **7B** | Create & Read Operations | ✅ COMPLETE (15 tests verified: 4 create tests + 9 read tests with parameter expansion) |
 | **7C** | Update & Delete Operations | ✅ COMPLETE (20 tests verified: 9 update tests + 7 delete tests with commit ordering and parameter expansion; 35 cumulative tests) |
-| **7D** | Validation Matrix, Error Policy, Cancellation | - Parameterized validation boundary tests (names, categories, price precision, stock)<br>- Exception masking & diagnostic suppression<br>- `CancellationToken` propagation tests |
+| **7D** | Validation Matrix, Error Policy, Cancellation | ✅ COMPLETE (94 tests verified: 87 validation matrix executions across Name, Category, Price, Stock, Id for Create/Update/Read/Delete + 7 cancellation/error propagation tests; 129 cumulative tests) |
 | **7E** | Cache Infrastructure & Report Service | - 7E.1: Service cache mode contracts (`Cached` vs. `CachedLong`)<br>- 7E.2: `AppCache` component tests with in-memory cache and generation tracking<br>- 7E.3: `ReportService` dashboard aggregation, ties, and sequential execution |
 | **7F** | Full Run, Evidence & Finalization | - Complete suite execution, TRX report, coverage analysis, test README finalization |
 
@@ -80,8 +80,11 @@ The unit-testing phase strictly enforces the boundary between service-level orch
 1. **Allowed Categories**:
    - The original specification mentions: *"Category is a plain string — no Category table. No unique-product-name requirement."*
    - In `ProductService.cs` and `CreateProductDto.cs`, category input is validated against `AllowedCategories` ("Accessories", "Electronics", "Office Furniture", "Stationery", "Stationary") and normalized.
-   - Tests will adhere to this actual implemented validation contract so tests pass truthfully without weakening validation.
+   - Tests adhere to this implemented validation contract so tests pass truthfully without weakening validation.
 2. **Category Normalization**:
-   - `ProductService.NormalizeCategory` automatically handles title-casing and maps `"Stationary"` -> `"Stationery"`. Tests will verify this behavior.
-3. **Price Precision**:
-   - `decimal.Round(price.Value, 2) != price.Value` enforces maximum 2 decimal places. Test boundaries will explicitly verify this check.
+   - `ProductService.NormalizeCategory` automatically handles title-casing and maps `"Stationary"` -> `"Stationery"`. Tests verify this behavior across create and update.
+3. **Price Precision & Range**:
+   - `decimal.Round(price.Value, 2) != price.Value` enforces maximum 2 decimal places.
+   - Genuine defect fixed during 7D: Enforced `decimal(18,2)` upper range limit (`price.Value > 999999999999999.99m`) in `ProductService.ValidateProductInput`, `CreateProductDto.Validate`, and `UpdateProductDto.Validate` to protect SQL Server persistence from unhandled arithmetic overflow.
+4. **Omission vs. Intentional Zero**:
+   - `CreateProductDto` and `UpdateProductDto` define `decimal? Price` and `int? Stock`. Nullable numeric properties allow distinguishing an omitted field (`null`) from an intentional zero (`0.00m` / `0`), both of which are valid domain values.

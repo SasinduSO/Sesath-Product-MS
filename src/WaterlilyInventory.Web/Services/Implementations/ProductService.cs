@@ -361,7 +361,7 @@ public class ProductService : IProductService
             }
         }
 
-        // Price validation: required, >= 0, reject excessive decimal precision (> 2 decimal places)
+        // Price validation: required, >= 0, max decimal(18,2) range, reject excessive decimal precision (> 2 decimal places)
         if (!price.HasValue)
         {
             AddError(errorDict, nameof(Product.Price), "Price is required and must be a valid number without letters.");
@@ -369,6 +369,10 @@ public class ProductService : IProductService
         else if (price.Value < 0)
         {
             AddError(errorDict, nameof(Product.Price), "Price must be zero or positive.");
+        }
+        else if (price.Value > 999999999999999.99m)
+        {
+            AddError(errorDict, nameof(Product.Price), "Price cannot exceed 999,999,999,999,999.99.");
         }
         else if (decimal.Round(price.Value, 2) != price.Value)
         {

@@ -548,7 +548,7 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
 
 ## Stage 7 — Unit Testing (MSTest & Moq)
 
-**Status:** 🔄 IN PROGRESS (Stages 7A, 7B, and 7C Complete)  
+**Status:** 🔄 IN PROGRESS (Stages 7A, 7B, 7C, and 7D Complete)  
 **Detailed Tracking:** See [docs/TestingStatus.md](TestingStatus.md) and [docs/TestingPlan.md](TestingPlan.md).
 
 ### Checkpoint 7A — Configure MSTest, Moq & First Meaningful Test
@@ -577,4 +577,19 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
   - Update: modified update with immutable primary keys and cache invalidation, unchanged no-op update with `"No changes were needed."` without invalidation, missing record 404, boundary validation, concurrency conflict outcome mapping, safe persistence exceptions, authoritative repository precedence over cache, and commit-ordering guards.
   - Delete: deletion success with `DeleteProductResultDto(DeletedId)` and cache invalidation, missing record 404, invalid ID rejection, concurrency conflict outcome mapping, safe persistence exceptions, and commit-ordering guards.
 - **Production Fixes Required:** None.
-- **Next Stage:** Checkpoint 7D — Validation boundaries, failures, and cancellation.
+
+### Checkpoint 7D — Validation Boundaries, Failures, and Cancellation
+- **Status:** ✅ COMPLETE
+- **Test Suites:** `ProductServiceValidationTests` (20 test methods / 87 runner executions), `ProductServiceCancellationTests` (7 test methods)
+- **Execution Results:** 94 discovered, 94 executed, 94 passed, 0 failed, 0 skipped (129 cumulative suite tests).
+- **Behaviors Verified:**
+  - Name Validation: null/empty/whitespace, 151 chars overlong, special characters rejected; 150 chars max, whitespace trimming, valid hyphens/spaces accepted across Create and Update.
+  - Category Validation: null/empty/whitespace, 101 chars overlong, unsupported category rejected; allowed categories, title-casing normalization, whitespace collapsing, and "Stationary" -> "Stationery" alias standardization accepted across Create and Update.
+  - Price Validation: null missing, negative (-0.01m, -150.00m), excessive decimals (> 2 decimal places, e.g. 1.234m), and over-range values (> 999,999,999,999,999.99m) rejected; 0.00m zero price, 0.01m minimum penny, 129.99m ordinary decimal, and 999,999,999,999,999.99m max decimal(18,2) boundary accepted across Create and Update.
+  - Stock Validation: null missing, negative (-1, -100) rejected; 0 zero stock, 1, 500, 1,000,000 positive integers accepted across Create and Update.
+  - Id Validation: 0, negative (-1, -999) rejected with validation failure before repository/cache access; valid positive IDs (1, 101) accepted across GetById, Update, and Delete.
+  - Cancellation Propagation: cancellation tokens passed to GetAll, GetById, Create, Update, Delete propagate directly as `OperationCanceledException` without disguise as PersistenceFailure, retrying, or invalidating caches.
+  - Unexpected Exception Propagation: unhandled runtime defect (`InvalidOperationException`) escapes service unswallowed for `GlobalExceptionHandlingMiddleware`.
+  - Inner Exception Diagnostic Suppression: sensitive database credentials / connection strings in inner exceptions are strictly suppressed from public response messages, errors, and data.
+- **Production Fixes Required:** Enforced `decimal(18,2)` upper range limit (`price.Value > 999999999999999.99m`) in `ProductService.ValidateProductInput`, `CreateProductDto.Validate()`, and `UpdateProductDto.Validate()`.
+- **Next Stage:** Checkpoint 7E — Cache component & Report Service tests.

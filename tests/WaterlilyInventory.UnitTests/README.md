@@ -135,8 +135,44 @@ tests/WaterlilyInventory.UnitTests/
 
 ---
 
-## 8. Troubleshooting
+---
 
+## 8. Checkpoint 7D — Validation Matrix, Error Policy & Cancellation Tests (94 Tests / 129 Cumulative)
+
+### ProductServiceValidationTests (20 test methods / 87 runner executions)
+Comprehensive parameterized data-driven tests exercising the real `ProductService` boundary:
+- **Name Validation (Create & Update)**:
+  - 5 invalid cases (null, empty, whitespace-only, 151 chars overlong, special characters) rejected with `Validation` error code, no repository or cache access.
+  - 3 valid boundary cases (150 chars maximum length, leading/trailing whitespace trimming, valid hyphens/spaces) accepted and persisted with trimmed name.
+- **Category Validation (Create & Update)**:
+  - 5 invalid cases (null, empty, whitespace-only, 101 chars overlong, unsupported category) rejected with `Validation` error code, no repository or cache access.
+  - 5 valid boundary cases ("Electronics", "  electronics  ", "office furniture", "Stationary" alias, "Accessories") accepted and normalized to standardized title case and "Stationery".
+- **Price Validation (Create & Update)**:
+  - 7 invalid cases (null missing, -0.01m, -150.00m, excessive fractions 1.234m, 0.001m, 99.999m, and over-range 1,000,000,000,000,000.00m exceeding `decimal(18,2)`) rejected with `Validation` error code.
+  - 4 valid boundary cases (0.00m zero price explicitly valid, 0.01m minimum penny, 129.99m standard, 999,999,999,999,999.99m max `decimal(18,2)` boundary) accepted.
+- **Stock Validation (Create & Update)**:
+  - 3 invalid cases (null missing, -1, -100) rejected with `Validation` error code.
+  - 4 valid boundary cases (0 zero stock explicitly valid, 1, 500, 1,000,000 positive integers) accepted.
+- **Id Validation (Read, Update, Delete)**:
+  - 3 invalid cases (0, -1, -999) rejected with `Validation` error code ("Product ID must be greater than zero.") before repository or cache access.
+  - 2 valid boundary cases (1 smallest identity PK, 101 typical positive ID) accepted across Read, Update, and Delete.
+
+### ProductServiceCancellationTests (7 tests)
+- `GetAllProducts_CancellationPropagates_DoesNotDisguiseAsPersistenceFailure`: Token passed to service propagates directly as `OperationCanceledException` without masking.
+- `GetProductById_CancellationPropagates_DoesNotDisguiseAsPersistenceFailure`: Cancellation during detail read propagates cleanly.
+- `CreateProduct_CancellationPropagates_WithoutCacheInvalidation`: In-flight creation cancellation propagates directly; cache invalidation is strictly prevented.
+- `UpdateProduct_CancellationPropagates_WithoutCacheInvalidation`: In-flight update cancellation propagates directly without invalidating cache.
+- `DeleteProduct_CancellationPropagates_WithoutCacheInvalidation`: In-flight deletion cancellation propagates directly without invalidating cache.
+- `UnexpectedException_PropagatesToMiddleware_DoesNotDisguiseAsSafeFailure`: Runtime defect (`InvalidOperationException`) escapes service unswallowed so `GlobalExceptionHandlingMiddleware` handles it.
+- `PersistenceException_WithSensitiveInnerException_SuppressesDiagnostics`: Sensitive database connection string / credentials embedded in the inner exception are strictly suppressed from the public `Message`, `ValidationErrors`, and returned data.
+
+---
+
+## 9. Troubleshooting & Technical Guidelines
+
+- **MSTest v4 Asynchronous Exceptions**: MSTest 4 unified exception assertion is `Assert.ThrowsAsync<TException>(Func<Task>)`.
+- **MSTEST0052 Analyzer Compliance**: In MSTest 4, use `[DynamicData(nameof(...))]` without `DynamicDataSourceType.Method` to enable default auto-detection.
+- **DynamicData vs DataRow**: Used `[DynamicData]` for monetary `decimal` values to preserve decimal precision without downcasting to `double`.
 - **CS8619 / Nullability Warnings**: When configuring `IAppCache.CachedAsync<T>`, the return type is `Task<T?>`. The helper in `CacheMockExtensions.cs` uses `async (key, factory, token) => (T?)await factory(token)` to ensure type safety.
 - **MSTEST0037 Analyzer Compliance**: Use MSTest's specialized assertion methods (`Assert.HasCount`, `Assert.IsEmpty`, `Assert.Contains`) for collection and string assertions rather than generic `Assert.AreEqual` / `Assert.IsTrue`.
 - **Microsoft.Testing.Platform Runner**: Configured in `global.json` under `"test": { "runner": "Microsoft.Testing.Platform" }`. Use `dotnet test --project <path>` rather than combining with legacy VSTest switches.

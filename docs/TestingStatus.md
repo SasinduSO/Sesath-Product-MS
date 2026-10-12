@@ -12,7 +12,7 @@
 | **7A** | Inspect contracts, configure MSTest, first test | ✅ COMPLETE | 1 | 1 | 0 | 0 | 2026-10-12 |
 | **7B** | Create and Read Service tests | ✅ COMPLETE | 15 | 15 | 0 | 0 | 2026-10-12 |
 | **7C** | Update and Delete Service tests | ✅ COMPLETE | 20 (35 cum.) | 20 (35 cum.) | 0 | 0 | 2026-10-12 |
-| **7D** | Validation boundaries, failures, cancellation | 🔲 PENDING | — | — | — | — | — |
+| **7D** | Validation boundaries, failures, cancellation | ✅ COMPLETE | 94 (129 cum.) | 94 (129 cum.) | 0 | 0 | 2026-10-12 |
 | **7E** | Cache component & Report Service tests | 🔲 PENDING | — | — | — | — | — |
 | **7F** | Full suite execution, evidence, documentation | 🔲 PENDING | — | — | — | — | — |
 
@@ -171,8 +171,66 @@ Proceed to **Prompt 7D — Validation boundaries, failures, and cancellation**.
 ---
 
 ## Checkpoint 7D — Validation boundaries, failures, and cancellation
-**Status:** 🔲 PENDING  
-**Scope:** Parameterized validation matrix (names, categories, price precision, stock constraints), exception diagnostic suppression, and cancellation propagation.
+
+**Status:** ✅ COMPLETE  
+**Date:** 2026-10-12  
+
+### 1. Completed Deliverables & Files
+
+| File | Purpose |
+|---|---|
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceValidationTests.cs` | 20 test methods expanded to 87 parameterized test executions using `[DynamicData]` covering boundary conditions and rejection for Name, Category, Price, Stock, and Id across Create, Update, Read, and Delete. |
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceCancellationTests.cs` | 7 tests covering cancellation propagation across GetAll, GetById, Create, Update, Delete (without disguising as PersistenceFailure, retrying, or invalidating caches), unexpected exception escape to middleware, and inner-exception diagnostic/credential suppression. |
+| `tests/WaterlilyInventory.UnitTests/Common/ProductTestBuilder.cs` | Added `CreateDto`, `UpdateSuccessResult`, and `DeleteSuccessResult` builders. |
+| `src/WaterlilyInventory.Web/Services/Implementations/ProductService.cs` | Added `decimal(18,2)` upper range limit check (`price.Value > 999999999999999.99m`) in `ValidateProductInput`. |
+| `src/WaterlilyInventory.Web/DTOs/Products/CreateProductDto.cs` | Added `decimal(18,2)` upper range limit validation in `Validate()`. |
+| `src/WaterlilyInventory.Web/DTOs/Products/UpdateProductDto.cs` | Added `decimal(18,2)` upper range limit validation in `Validate()`. |
+| `tests/WaterlilyInventory.UnitTests/README.md` | Documented Checkpoint 7D test breakdown, technical guidelines, and MSTest v4 patterns. |
+| `docs/TestingPlan.md` | Updated contract mapping with Stage 7D completed status and observations. |
+| `docs/TestingStatus.md` | This document. |
+| `docs/BuildStatus.md` | Updated build status with Checkpoint 7D test outcomes. |
+
+### 2. Actual Commands Executed & Evidence
+
+```powershell
+# 1. Focused Unit Tests Run (MTP)
+dotnet test --project tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj
+# Output:
+# Running tests from ...\tests\WaterlilyInventory.UnitTests\bin\Debug\net10.0\WaterlilyInventory.UnitTests.dll (net10.0|x64)
+# C:\...\WaterlilyInventory.UnitTests.dll (net10.0|x64) passed (1s 993ms)
+# Test run summary: Passed!
+#   total: 129
+#   failed: 0
+#   succeeded: 129
+#   skipped: 0
+#   duration: 2s 719ms
+
+# 2. Entire Solution Test Run
+dotnet test
+# Output:
+# Running tests from ...\tests\WaterlilyInventory.UnitTests\bin\Debug\net10.0\WaterlilyInventory.UnitTests.dll (net10.0|x64)
+# C:\...\WaterlilyInventory.UnitTests.dll (net10.0|x64) passed (1s 784ms)
+# Test run summary: Passed!
+#   total: 129
+#   failed: 0
+#   succeeded: 129
+#   skipped: 0
+#   duration: 2s 323ms
+```
+
+### 3. Production Fixes Required
+- **Price Maximum Range Enforcement**: Enforced SQL Server `decimal(18,2)` maximum boundary (`999,999,999,999,999.99m`) in `ProductService.ValidateProductInput`, `CreateProductDto.Validate()`, and `UpdateProductDto.Validate()`. Prevents unhandled arithmetic overflow exceptions when overly large decimal values are submitted.
+
+### 4. Test Fixture Fixes Applied
+- **MSTest 4 Asynchronous Exception Assertion**: Switched from `Assert.ThrowsExceptionAsync` to MSTest v4's `Assert.ThrowsAsync<T>()`.
+- **Analyzer MSTEST0052 Compliance**: Removed explicit `DynamicDataSourceType.Method` from `[DynamicData]` attributes in favor of automatic detection.
+- **Strict Mock Invocations**: Added explicit `_cacheMock.Verify(..., Times.Once)` in detail read cancellation test prior to `VerifyNoOtherCalls()`.
+
+### 5. Blockers
+**None.**
+
+### 6. Next Action
+Proceed to **Prompt 7E — Cache component & Report Service tests**.
 
 ---
 

@@ -82,6 +82,16 @@ public static class ProductTestBuilder
     ];
 
     /// <summary>
+    /// Creates a single output <see cref="ProductDto"/>.
+    /// </summary>
+    public static ProductDto CreateDto(
+        int id = DefaultProductId,
+        string name = DefaultName,
+        string category = DefaultCategory,
+        decimal price = DefaultPrice,
+        int stock = DefaultStock) => new(id, name, category, price, stock);
+
+    /// <summary>
     /// Creates a successful <see cref="RepositoryWriteResult{Product}"/> with <see cref="WriteOutcome.Created"/>.
     /// </summary>
     public static RepositoryWriteResult<Product> CreateSuccessResult(
@@ -93,5 +103,33 @@ public static class ProductTestBuilder
     {
         var entity = CreateProduct(id, name, category, price, stock);
         return RepositoryWriteResult<Product>.Created(entity);
+    }
+
+    /// <summary>
+    /// Creates a successful <see cref="RepositoryWriteResult{Product}"/> with <see cref="WriteOutcome.Updated"/>.
+    /// </summary>
+    public static RepositoryWriteResult<Product> UpdateSuccessResult(
+        int id = DefaultProductId,
+        string name = DefaultName,
+        string category = DefaultCategory,
+        decimal price = DefaultPrice,
+        int stock = DefaultStock)
+    {
+        var entity = CreateProduct(id, name, category, price, stock);
+        return RepositoryWriteResult<Product>.Updated(entity);
+    }
+
+    /// <summary>
+    /// Creates a successful <see cref="RepositoryWriteResult{Product}"/> with <see cref="WriteOutcome.Deleted"/>.
+    /// </summary>
+    public static RepositoryWriteResult<Product> DeleteSuccessResult(
+        int id = DefaultProductId,
+        string name = DefaultName,
+        string category = DefaultCategory,
+        decimal price = DefaultPrice,
+        int stock = DefaultStock)
+    {
+        var entity = CreateProduct(id, name, category, price, stock);
+        return RepositoryWriteResult<Product>.Deleted(entity);
     }
 }

@@ -85,9 +85,16 @@ public class CreateProductDto : IValidatableObject
             yield return new ValidationResult("Category must be one of the allowed categories: Accessories, Electronics, Office Furniture, Stationary.", new[] { nameof(Category) });
         }
 
-        if (Price.HasValue && decimal.Round(Price.Value, 2) != Price.Value)
+        if (Price.HasValue)
         {
-            yield return new ValidationResult("Price cannot have more than 2 decimal places.", new[] { nameof(Price) });
+            if (Price.Value > 999999999999999.99m)
+            {
+                yield return new ValidationResult("Price cannot exceed 999,999,999,999,999.99.", new[] { nameof(Price) });
+            }
+            else if (decimal.Round(Price.Value, 2) != Price.Value)
+            {
+                yield return new ValidationResult("Price cannot have more than 2 decimal places.", new[] { nameof(Price) });
+            }
         }
     }
 }
