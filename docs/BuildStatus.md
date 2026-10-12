@@ -546,6 +546,17 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
 
 ---
 
-## Later — MSTest/Moq Tests
+## Stage 7 — Unit Testing (MSTest & Moq)
 
-**Status:** 🔲 DEFERRED (Next required development stage documented in `docs/TestingBacklog.md`)
+**Status:** 🔄 IN PROGRESS (Stage 7A Complete)  
+**Detailed Tracking:** See [docs/TestingStatus.md](TestingStatus.md) and [docs/TestingPlan.md](TestingPlan.md).
+
+### Checkpoint 7A — Configure MSTest, Moq & First Meaningful Test
+- **Status:** ✅ COMPLETE
+- **Test Project:** `tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj`
+- **Runner:** `MSTest.Sdk/4.0.2` with `Microsoft.Testing.Platform` (net10.0, SDK 10.0.401 pinned in `global.json`)
+- **Mocking Library:** `Moq` 4.20.72
+- **First Test:** `ProductServiceCreateTests.CreateProduct_ValidInput_ReturnsSuccessAndInvalidatesCache`
+- **Execution Results:** 1 discovered, 1 executed, 1 passed, 0 failed, 0 skipped.
+- **Production Fixes Required:** None.
+- **Next Stage:** Checkpoint 7B — Create and Read Service tests.

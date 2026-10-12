@@ -178,7 +178,7 @@ Add `Filters/` or `Extensions/` only when there is real code for them.
 - Do not use `EnsureCreated` as a migration replacement or alongside the migration workflow.
 - Do not auto-apply migrations on every web request.
 - **Not needed:** Authentication, extra entities, AI integrations, CI/CD, CQRS, MediatR, microservices.
-- **Deferred:** MSTest/Moq tests (a later required stage). Preserve testable interfaces now.
+- **Authorized Testing:** MSTest/Moq unit test implementation authorized (Stages 7A–7F). Exercise real services with mocked repository/cache dependencies; do not use external databases or real network/web hosts for unit tests.
 
 ---
 

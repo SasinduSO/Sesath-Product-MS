@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/WaterlilyInventory.Web/WaterlilyInventory.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj" />
+  </Folder>
 </Solution>
