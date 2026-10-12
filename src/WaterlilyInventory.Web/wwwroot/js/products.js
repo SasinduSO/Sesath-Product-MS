@@ -28,6 +28,13 @@ $(function () {
     var productModal = productModalEl ? new bootstrap.Modal(productModalEl) : null;
     var detailsModalEl = document.getElementById('productDetailsModal');
     var detailsModal = detailsModalEl ? new bootstrap.Modal(detailsModalEl) : null;
+    var bulkModalEl = document.getElementById('bulkAddModal');
+    var bulkModal = bulkModalEl ? new bootstrap.Modal(bulkModalEl) : null;
+
+    // Bulk upload state
+    var currentBulkFile = null;
+    var bulkPreviewData = null;
+    var currentBulkFilterTab = 'all';
 
     // Initialize page
     init();
@@ -41,10 +48,16 @@ $(function () {
      * Binds UI event listeners
      */
     function bindEvents() {
-        // Open Add Product Modal
+        // Open Add Single Product Modal
         $('#btnAddProduct').on('click', function () {
             lastFocusedElement = this;
             openAddModal();
+        });
+
+        // Open Add Bulk Modal
+        $('#btnAddBulk').on('click', function () {
+            lastFocusedElement = this;
+            openBulkModal();
         });
 
         // Search input with immediate / debounced filter
@@ -232,6 +245,93 @@ $(function () {
                 }
             });
         }
+
+        if (bulkModalEl) {
+            bulkModalEl.addEventListener('hidden.bs.modal', function () {
+                resetBulkModal();
+                if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+                    lastFocusedElement.focus();
+                }
+            });
+        }
+
+        // Bulk Upload: File Browse Click
+        $('#btnBrowseFile').on('click', function (e) {
+            e.stopPropagation();
+            $('#bulkFileInput').trigger('click');
+        });
+
+        $('#bulkDropZone').on('click', function () {
+            $('#bulkFileInput').trigger('click');
+        });
+
+        // Bulk Upload: Drag & Drop handlers
+        $('#bulkDropZone')
+            .on('dragover dragenter', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).addClass('dragover');
+            })
+            .on('dragleave dragend drop', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                $(this).removeClass('dragover');
+            })
+            .on('drop', function (e) {
+                var dt = e.originalEvent.dataTransfer;
+                if (dt && dt.files && dt.files.length > 0) {
+                    handleBulkFileSelection(dt.files[0]);
+                }
+            });
+
+        // Bulk Upload: Input File Change
+        $('#bulkFileInput').on('change', function () {
+            if (this.files && this.files.length > 0) {
+                handleBulkFileSelection(this.files[0]);
+            }
+        });
+
+        // Bulk Upload: Remove File
+        $('#btnRemoveSelectedFile').on('click', function () {
+            resetBulkFile();
+        });
+
+        // Bulk Upload: Extract & Validate Data button
+        $('#btnExtractAndValidate').on('click', function () {
+            extractAndValidateBulkFile();
+        });
+
+        // Bulk Preview: Tabs Switcher
+        $('#tabAllRecords').on('click', function () {
+            currentBulkFilterTab = 'all';
+            setActivePreviewTab($(this));
+            renderBulkPreviewTable('all');
+        });
+
+        $('#tabValidRecords').on('click', function () {
+            currentBulkFilterTab = 'valid';
+            setActivePreviewTab($(this));
+            renderBulkPreviewTable('valid');
+        });
+
+        $('#tabInvalidRecords').on('click', function () {
+            currentBulkFilterTab = 'invalid';
+            setActivePreviewTab($(this));
+            renderBulkPreviewTable('invalid');
+        });
+
+        // Bulk Preview: Back to Upload step
+        $('#btnBulkBackToUpload').on('click', function () {
+            $('#bulkPreviewStep').hide();
+            $('#bulkUploadStep').show();
+            $('#btnBulkBackToUpload').addClass('d-none');
+            $('#btnApproveAndImport').addClass('d-none');
+        });
+
+        // Bulk Preview: Approve & Import Valid Records
+        $('#btnApproveAndImport').on('click', function () {
+            executeBulkImport();
+        });
     }
 
     /**
@@ -872,4 +972,337 @@ $(function () {
         });
     }
 
+    /**
+     * Opens the Bulk Add Products Modal
+     */
+    function openBulkModal() {
+        resetBulkModal();
+        if (bulkModal) bulkModal.show();
+    }
+
+    /**
+     * Resets the entire Bulk Modal state
+     */
+    function resetBulkModal() {
+        resetBulkFile();
+        bulkPreviewData = null;
+        currentBulkFilterTab = 'all';
+
+        $('#bulkUploadStep').show();
+        $('#bulkPreviewStep').hide();
+        $('#btnBulkBackToUpload').addClass('d-none');
+        $('#btnApproveAndImport').addClass('d-none');
+        $('#previewTableBody').empty();
+        $('#previewTotalCount').text('0');
+        $('#previewValidCount').text('0');
+        $('#previewInvalidCount').text('0');
+        $('#badgeTabAll').text('0');
+        $('#badgeTabValid').text('0');
+        $('#badgeTabInvalid').text('0');
+        setActivePreviewTab($('#tabAllRecords'));
+    }
+
+    /**
+     * Resets the uploaded file input and selection card
+     */
+    function resetBulkFile() {
+        currentBulkFile = null;
+        $('#bulkFileInput').val('');
+        $('#selectedFileInfo').addClass('d-none');
+        $('#bulkUploadError').addClass('d-none').text('');
+        $('#btnExtractAndValidate').prop('disabled', true);
+    }
+
+    /**
+     * Handles file selection from file input or drag-and-drop
+     */
+    function handleBulkFileSelection(file) {
+        if (!file) return;
+
+        var ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'csv' && ext !== 'xlsx' && ext !== 'txt') {
+            $('#bulkUploadError')
+                .text('Unsupported file format. Please upload a .csv or .xlsx file.')
+                .removeClass('d-none');
+            resetBulkFile();
+            return;
+        }
+
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            $('#bulkUploadError')
+                .text('File size cannot exceed 10MB.')
+                .removeClass('d-none');
+            resetBulkFile();
+            return;
+        }
+
+        currentBulkFile = file;
+        $('#bulkUploadError').addClass('d-none').text('');
+
+        // Update file info display
+        $('#selectedFileName').text(file.name);
+        var sizeKb = (file.size / 1024).toFixed(1);
+        var sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+        $('#selectedFileSize').text(file.size > 1024 * 1024 ? sizeMb + ' MB' : sizeKb + ' KB');
+        $('#selectedFileInfo').removeClass('d-none');
+        $('#btnExtractAndValidate').prop('disabled', false);
+    }
+
+    /**
+     * Sends file to /products/bulk-preview to extract and validate records
+     */
+    function extractAndValidateBulkFile() {
+        if (!currentBulkFile) return;
+
+        var $btn = $('#btnExtractAndValidate');
+        var $spinner = $('#validateSpinner');
+        var $btnText = $('#validateBtnText');
+
+        $btn.prop('disabled', true);
+        $spinner.removeClass('d-none');
+        $btnText.text('Extracting & Validating...');
+        $('#bulkUploadError').addClass('d-none').text('');
+
+        var formData = new FormData();
+        formData.append('file', currentBulkFile);
+
+        $.ajax({
+            url: '/products/bulk-preview',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json'
+        }).done(function (res) {
+            if (res && res.isSuccess && res.data) {
+                bulkPreviewData = res.data;
+                displayBulkPreview(res.data);
+            } else {
+                var errorMsg = res && res.message ? res.message : 'Failed to extract and validate records.';
+                $('#bulkUploadError').text(errorMsg).removeClass('d-none');
+            }
+        }).fail(function (jqXHR) {
+            var msg = jqXHR.responseJSON && jqXHR.responseJSON.message
+                ? jqXHR.responseJSON.message
+                : 'Server error while processing spreadsheet.';
+            $('#bulkUploadError').text(msg).removeClass('d-none');
+        }).always(function () {
+            $btn.prop('disabled', false);
+            $spinner.addClass('d-none');
+            $btnText.text('Extract & Validate Data');
+        });
+    }
+
+    /**
+     * Renders preview summary metrics and activates preview step
+     */
+    function displayBulkPreview(preview) {
+        $('#previewTotalCount').text(preview.totalRecords);
+        $('#previewValidCount').text(preview.validRecordsCount);
+        $('#previewInvalidCount').text(preview.invalidRecordsCount);
+
+        $('#badgeTabAll').text(preview.totalRecords);
+        $('#badgeTabValid').text(preview.validRecordsCount);
+        $('#badgeTabInvalid').text(preview.invalidRecordsCount);
+
+        // Update alert message and approve button state
+        var $alert = $('#previewStatusAlert');
+        var $alertText = $('#previewStatusAlertText');
+        var $btnImport = $('#btnApproveAndImport');
+        var $importBtnText = $('#importBtnText');
+
+        if (preview.validRecordsCount > 0) {
+            $alert.removeClass('alert-danger').addClass('alert-info');
+            $alertText.html(
+                '<strong>' + preview.validRecordsCount + ' acceptable records</strong> ready to import. ' +
+                (preview.invalidRecordsCount > 0 ? (preview.invalidRecordsCount + ' rejected records will be skipped. ') : '') +
+                'Click <strong>Approve &amp; Import</strong> to add them to your inventory database.'
+            );
+            $btnImport.prop('disabled', false).removeClass('d-none');
+            $importBtnText.text('Approve & Import (' + preview.validRecordsCount + ') Valid Records');
+        } else {
+            $alert.removeClass('alert-info').addClass('alert-danger');
+            $alertText.html(
+                '<strong>No acceptable records found.</strong> All ' + preview.totalRecords +
+                ' records have validation errors. Please review the rejected reasons below, fix your spreadsheet, and upload again.'
+            );
+            $btnImport.prop('disabled', true).addClass('d-none');
+        }
+
+        // Switch to preview view
+        $('#bulkUploadStep').hide();
+        $('#bulkPreviewStep').show();
+        $('#btnBulkBackToUpload').removeClass('d-none');
+
+        // Set default tab and render table
+        currentBulkFilterTab = 'all';
+        setActivePreviewTab($('#tabAllRecords'));
+        renderBulkPreviewTable('all');
+    }
+
+    /**
+     * Sets active preview tab pill styling
+     */
+    function setActivePreviewTab($activeTab) {
+        $('#previewTabs .nav-link').removeClass('active');
+        $activeTab.addClass('active');
+    }
+
+    /**
+     * Renders the Preview Table filtered by 'all', 'valid', or 'invalid'
+     */
+    function renderBulkPreviewTable(filter) {
+        if (!bulkPreviewData) return;
+
+        var rows = [];
+        if (filter === 'valid') {
+            rows = bulkPreviewData.validRecords || [];
+        } else if (filter === 'invalid') {
+            rows = bulkPreviewData.invalidRecords || [];
+        } else {
+            rows = bulkPreviewData.allRecords || [];
+        }
+
+        var $tbody = $('#previewTableBody');
+        $tbody.empty();
+
+        if (rows.length === 0) {
+            $tbody.html('<tr><td colspan="6" class="text-center py-4 text-muted">No records in this category.</td></tr>');
+            return;
+        }
+
+        rows.forEach(function (r) {
+            var $tr = $('<tr>');
+
+            // ID / Row number
+            var rowIdText = r.rawId ? r.rawId : ('#' + r.rowNumber);
+            $tr.append($('<td>').addClass('fw-semibold text-muted').text(rowIdText));
+
+            // Name (highlight cell in red if Name has error)
+            var $tdName = $('<td>').text(r.name || '—');
+            if (r.fieldErrors && r.fieldErrors.Name) {
+                $tdName.addClass('cell-invalid').attr('title', r.fieldErrors.Name);
+            }
+            $tr.append($tdName);
+
+            // Category (highlight cell in red if Category has error)
+            var $tdCat = $('<td>').text(r.category || '—');
+            if (r.fieldErrors && r.fieldErrors.Category) {
+                $tdCat.addClass('cell-invalid').attr('title', r.fieldErrors.Category);
+            }
+            $tr.append($tdCat);
+
+            // Price (highlight cell in red if Price has error)
+            var priceDisplay = r.price !== null && r.price !== undefined
+                ? Waterlily.formatCurrency(r.price)
+                : (r.rawPrice ? r.rawPrice : '—');
+            var $tdPrice = $('<td>').addClass('text-end text-nowrap').text(priceDisplay);
+            if (r.fieldErrors && r.fieldErrors.Price) {
+                $tdPrice.addClass('cell-invalid').attr('title', r.fieldErrors.Price);
+            }
+            $tr.append($tdPrice);
+
+            // Stock (highlight cell in red if Stock has error)
+            var stockDisplay = r.stock !== null && r.stock !== undefined
+                ? r.stock.toLocaleString()
+                : (r.rawStock ? r.rawStock : '—');
+            var $tdStock = $('<td>').addClass('text-end text-nowrap').text(stockDisplay);
+            if (r.fieldErrors && r.fieldErrors.Stock) {
+                $tdStock.addClass('cell-invalid').attr('title', r.fieldErrors.Stock);
+            }
+            $tr.append($tdStock);
+
+            // Status and Error Details
+            var $tdStatus = $('<td>');
+            if (r.isValid) {
+                $tdStatus.html(
+                    '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">' +
+                    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="me-1"><polyline points="20 6 9 17 4 12"></polyline></svg>' +
+                    'Ready to Import</span>'
+                );
+            } else {
+                var errHtml = '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 mb-1">' +
+                              '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="me-1"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+                              'Rejected</span>';
+
+                if (r.errors && r.errors.length > 0) {
+                    errHtml += '<div class="text-danger small mt-1">';
+                    r.errors.forEach(function (err) {
+                        errHtml += '<div>&bull; ' + $('<div>').text(err).html() + '</div>';
+                    });
+                    errHtml += '</div>';
+                }
+                $tdStatus.html(errHtml);
+            }
+            $tr.append($tdStatus);
+
+            $tbody.append($tr);
+        });
+    }
+
+    /**
+     * Executes bulk import of validated records via POST /products/bulk-import
+     */
+    function executeBulkImport() {
+        if (!bulkPreviewData || !bulkPreviewData.validRecords || bulkPreviewData.validRecords.length === 0) {
+            Waterlily.notifyError('No valid records to import.');
+            return;
+        }
+
+        var validCount = bulkPreviewData.validRecordsCount;
+        var invalidCount = bulkPreviewData.invalidRecordsCount;
+
+        var confirmTitle = 'Import ' + validCount + ' Products?';
+        var confirmText = 'Are you sure you want to add ' + validCount + ' valid product(s) to the inventory database?' +
+            (invalidCount > 0 ? (' ' + invalidCount + ' rejected record(s) will be skipped.') : '');
+
+        Waterlily.confirmAction(confirmTitle, confirmText, 'Yes, Import Now').then(function (result) {
+            if (!result.isConfirmed) return;
+
+            var $btn = $('#btnApproveAndImport');
+            var $spinner = $('#importSpinner');
+            var $btnText = $('#importBtnText');
+
+            $btn.prop('disabled', true);
+            $spinner.removeClass('d-none');
+            $btnText.text('Importing Products...');
+
+            var payload = {
+                Products: bulkPreviewData.validRecords.map(function (r) {
+                    return {
+                        Name: r.name,
+                        Category: r.category,
+                        Price: r.price,
+                        Stock: r.stock
+                    };
+                })
+            };
+
+            $.ajax({
+                url: '/products/bulk-import',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                dataType: 'json'
+            }).done(function (res) {
+                if (res && res.isSuccess) {
+                    if (bulkModal) bulkModal.hide();
+                    Waterlily.notifySuccess(res.message || 'Successfully imported ' + validCount + ' products.');
+                    // Reload products table and reflect new records immediately
+                    loadProducts(true);
+                } else {
+                    Waterlily.notifyError(res && res.message ? res.message : 'Bulk import failed.');
+                }
+            }).fail(function (jqXHR) {
+                Waterlily.handleAjaxError(jqXHR);
+            }).always(function () {
+                $btn.prop('disabled', false);
+                $spinner.addClass('d-none');
+                $btnText.text('Approve & Import Valid Records');
+            });
+        });
+    }
+
 });
+

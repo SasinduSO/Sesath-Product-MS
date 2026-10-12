@@ -8,6 +8,7 @@ using WaterlilyInventory.Web.Repositories.Implementations;
 using WaterlilyInventory.Web.Repositories.Interfaces;
 using WaterlilyInventory.Web.Services.Implementations;
 using WaterlilyInventory.Web.Services.Interfaces;
+using WaterlilyInventory.Web.Services.Parsing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,6 +57,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IAppCache, AppCache>();
 
 // Register Application Services with scoped lifetime
+builder.Services.AddScoped<IProductSpreadsheetParser, WaterlilyInventory.Web.Services.Parsing.ProductSpreadsheetParser>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 

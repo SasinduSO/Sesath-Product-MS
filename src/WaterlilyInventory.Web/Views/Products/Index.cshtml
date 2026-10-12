@@ -8,14 +8,36 @@
         <h1 class="card-title-lg">Product Inventory</h1>
         <p class="card-subtitle mb-0">Manage your catalog, track stock availability, and update pricing.</p>
     </div>
-    <div>
-        <button type="button" class="btn btn-primary-custom d-inline-flex align-items-center gap-2" id="btnAddProduct">
+    <div class="dropdown">
+        <button type="button" class="btn btn-primary-custom dropdown-toggle d-inline-flex align-items-center gap-2" id="btnAddDropdown" data-bs-toggle="dropdown" aria-expanded="false">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            <span>Add Product</span>
+            <span>Add Products</span>
         </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border" aria-labelledby="btnAddDropdown">
+            <li>
+                <button type="button" class="dropdown-item d-flex align-items-center gap-2 py-2" id="btnAddProduct">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    <span>Add Product</span>
+                </button>
+            </li>
+            <li>
+                <button type="button" class="dropdown-item d-flex align-items-center gap-2 py-2" id="btnAddBulk">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="12" y1="18" x2="12" y2="12"></line>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                    </svg>
+                    <span>Add Bulk</span>
+                </button>
+            </li>
+        </ul>
     </div>
 </div>
 
@@ -232,6 +254,218 @@
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal" id="btnCloseDetailsModal">Close</button>
                 <button type="button" class="btn btn-primary-custom" id="btnEditFromDetails">Edit Product</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Add Products Modal Container -->
+<div class="modal fade" id="bulkAddModal" tabindex="-1" aria-labelledby="bulkAddModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold" id="bulkAddModalLabel">Bulk Add Products</h5>
+                    <p class="text-muted small mb-0">Upload a CSV or Excel spreadsheet to validate and import products into inventory.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="btnCloseBulkModal"></button>
+            </div>
+
+            <div class="modal-body p-4">
+                <!-- STEP 1: Upload and Sample File Section -->
+                <div id="bulkUploadStep">
+                    <!-- Sample File Download Cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded-3 bg-light d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <polyline points="14 2 14 8 20 8"></polyline>
+                                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-0 text-dark">Sample CSV (with Data)</h6>
+                                        <small class="text-muted">Includes 20 sample test records (15 valid, 5 rejected)</small>
+                                    </div>
+                                </div>
+                                <a href="/products/sample-csv?withDemoData=true" class="btn btn-outline-custom btn-sm text-nowrap" id="btnDownloadSampleWithData" download>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Download CSV
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded-3 bg-light d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="rounded-circle bg-secondary bg-opacity-10 text-secondary p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                            <line x1="9" y1="3" x2="9" y2="21"></line>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bold mb-0 text-dark">Blank Template CSV</h6>
+                                        <small class="text-muted">Clean template ready for your catalog entries</small>
+                                    </div>
+                                </div>
+                                <a href="/products/sample-csv?withDemoData=false" class="btn btn-outline-custom btn-sm text-nowrap" id="btnDownloadBlankTemplate" download>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Download Template
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Drag and Drop Upload Zone -->
+                    <div class="bulk-drop-zone p-5 text-center border-2 border-dashed rounded-3 mb-3" id="bulkDropZone">
+                        <input type="file" id="bulkFileInput" class="d-none" accept=".csv, .xlsx, .txt, text/csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+                        <div class="upload-icon-wrapper mb-3 text-primary">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                        </div>
+                        <h6 class="fw-bold text-dark mb-1">Drag and drop your spreadsheet here, or <span class="text-primary text-decoration-underline cursor-pointer" id="btnBrowseFile" role="button">browse files</span></h6>
+                        <p class="text-muted small mb-0">Supports CSV and Excel (.xlsx) files up to 10MB. Columns: Name, Category, Price, Stock (ID optional).</p>
+                    </div>
+
+                    <!-- Selected File Info Pill -->
+                    <div class="selected-file-card p-3 border rounded-3 bg-white d-none mb-3" id="selectedFileInfo">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary text-white p-2">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    </svg>
+                                </span>
+                                <div>
+                                    <strong class="text-dark" id="selectedFileName">filename.csv</strong>
+                                    <div class="text-muted small" id="selectedFileSize">0 KB</div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm" id="btnRemoveSelectedFile" title="Remove selected file">
+                                &times; Remove
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Error Alert in Upload Step -->
+                    <div class="alert alert-danger d-none" id="bulkUploadError" role="alert"></div>
+
+                    <!-- Action in Upload Step -->
+                    <div class="text-end">
+                        <button type="button" class="btn btn-primary-custom d-inline-flex align-items-center gap-2" id="btnExtractAndValidate" disabled>
+                            <span class="spinner-border spinner-border-sm d-none" id="validateSpinner" role="status" aria-hidden="true"></span>
+                            <span id="validateBtnText">Extract &amp; Validate Data</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Validation Preview and Approval Section -->
+                <div id="bulkPreviewStep" style="display: none;">
+                    <!-- Top Summary Metric Cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <div class="app-card border text-center p-3">
+                                <span class="text-muted small fw-semibold text-uppercase">Total Extracted Records</span>
+                                <h3 class="fw-bold mb-0 text-dark" id="previewTotalCount">0</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="app-card border border-success border-opacity-25 text-center p-3" style="background-color: var(--success-badge-bg);">
+                                <span class="text-success small fw-semibold text-uppercase">Acceptable (Valid)</span>
+                                <h3 class="fw-bold mb-0 text-success" id="previewValidCount">0</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="app-card border border-danger border-opacity-25 text-center p-3" style="background-color: var(--danger-badge-bg);">
+                                <span class="text-danger small fw-semibold text-uppercase">Rejected (Invalid)</span>
+                                <h3 class="fw-bold mb-0 text-danger" id="previewInvalidCount">0</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Instruction Alert based on validation results -->
+                    <div class="alert alert-info d-flex align-items-center gap-2 mb-3" id="previewStatusAlert">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="flex-shrink-0">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        <span id="previewStatusAlertText">Review the acceptable and rejected records below before approving import.</span>
+                    </div>
+
+                    <!-- Filter Tabs for Preview Table -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                        <ul class="nav nav-pills" id="previewTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active py-1 px-3" id="tabAllRecords" type="button" role="tab">
+                                    All Records (<span id="badgeTabAll">0</span>)
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link text-success py-1 px-3" id="tabValidRecords" type="button" role="tab">
+                                    Acceptable (<span id="badgeTabValid">0</span>)
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link text-danger py-1 px-3" id="tabInvalidRecords" type="button" role="tab">
+                                    Rejected (<span id="badgeTabInvalid">0</span>)
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="text-muted small">
+                            <span class="badge bg-light text-dark border me-1"><span class="badge bg-danger p-1 me-1"></span> Red cells indicate validation issues</span>
+                        </div>
+                    </div>
+
+                    <!-- Data Preview Table -->
+                    <div class="table-responsive border rounded-3 overflow-hidden mb-3" style="max-height: 380px;">
+                        <table class="table table-hover table-striped mb-0 align-middle small" id="previewTable">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th scope="col" style="width: 70px;">#</th>
+                                    <th scope="col">Product Name</th>
+                                    <th scope="col" style="width: 170px;">Category</th>
+                                    <th scope="col" class="text-end" style="width: 120px;">Price</th>
+                                    <th scope="col" class="text-end" style="width: 100px;">Stock</th>
+                                    <th scope="col" style="width: 250px;">Validation Status / Errors</th>
+                                </tr>
+                            </thead>
+                            <tbody id="previewTableBody">
+                                <!-- Populated dynamically by products.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <div>
+                    <button type="button" class="btn btn-outline-custom d-none" id="btnBulkBackToUpload">
+                        &larr; Choose Different File
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal" id="btnCancelBulkModal">Cancel</button>
+                    <button type="button" class="btn btn-primary-custom d-inline-flex align-items-center gap-2 d-none" id="btnApproveAndImport">
+                        <span class="spinner-border spinner-border-sm d-none" id="importSpinner" role="status" aria-hidden="true"></span>
+                        <span id="importBtnText">Approve &amp; Import Valid Records</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

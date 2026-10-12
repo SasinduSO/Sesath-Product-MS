@@ -437,3 +437,37 @@ html, body {
     color: #FFFFFF;
     border-color: #C05621;
 }
+
+/* Bulk Upload and Validation Preview Styling */
+.bulk-drop-zone {
+    border-color: #CBD5E1;
+    background-color: #F8FAFD;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.bulk-drop-zone:hover, .bulk-drop-zone.dragover {
+    border-color: var(--primary);
+    background-color: #EFF6FF;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.cell-invalid {
+    background-color: #FFEBEE !important;
+    color: #C62828 !important;
+    font-weight: 600;
+}
+
+.preview-error-badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #C62828;
+    background-color: #FFEBEE;
+    border-radius: 4px;
+    margin-top: 2px;
+}

@@ -616,4 +616,27 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
 - **Production Fixes Verified:** SQL Server `decimal(18,2)` range limit enforcement in `ProductService.ValidateProductInput`, `CreateProductDto.Validate()`, and `UpdateProductDto.Validate()`.
 - **Stage 7 Outcome:** Full unit testing suite is 100% complete and fully verified.
 
+---
+
+## Stage 8 — Bulk Product Import (Spreadsheet / CSV & Excel)
+
+- **Status:** ✅ COMPLETE
+- **Date:** 2026-10-12
+- **Objective:** Enable bulk upload of product spreadsheets (.csv and .xlsx) with sample template downloads, domain validation extraction, preview segregation of acceptable vs. rejected records with cell-level error highlighting, user confirmation/approval workflow, and batch persistence to SQL Server.
+- **Components Implemented:**
+  - **DTOs:** `BulkProductRowDto`, `BulkProductPreviewDto`, `BulkProductImportRequestDto`, `BulkProductImportResultDto`.
+  - **Spreadsheet Parser (`ProductSpreadsheetParser`):** Zero-dependency RFC 4180 CSV and OpenXML Excel (.xlsx via BCL ZipArchive & XDocument) parser with column auto-mapping and numeric cleaning (strips currency symbols and commas).
+  - **Repository Layer:** Added `CreateRangeAsync` to `IGenericRepository<T>` and `GenericRepository<T>` returning `RepositoryWriteResult<IReadOnlyList<T>>`.
+  - **Service Layer (`ProductService`):**
+    - `PreviewBulkProductsAsync`: Extracts and validates all rows against domain rules, separating valid and invalid records.
+    - `ImportBulkProductsAsync`: Re-validates batch, performs bulk persistence via repository, and invalidates catalog/report caches.
+  - **Controller (`ProductsController`):**
+    - `GET /products/sample-csv`: Provides sample CSV with 20 reference rows or blank template.
+    - `POST /products/bulk-preview`: Accepts uploaded file and returns validation preview envelope.
+    - `POST /products/bulk-import`: Commits approved valid records.
+  - **Frontend UI & AJAX (`Index.cshtml`, `products.js`, `site.css`):**
+    - Replaced single Add Product button with dropdown offering "Add Product" and "Add Bulk".
+    - Added `#bulkAddModal` modal dialog with sample CSV download buttons, drag-and-drop zone, metrics summary cards, tabbed views (All, Acceptable, Rejected), red cell highlighting for invalid entries matching reference UI, and SweetAlert2 confirmation approval.
+  - **Unit Testing:** Added 10 tests across `ProductSpreadsheetParserTests` and `ProductServiceBulkTests` (total suite: 167 tests, 100% passing).
+
 

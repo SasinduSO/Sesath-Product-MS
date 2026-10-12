@@ -98,6 +98,41 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class, IEnti
     }
 
     /// <inheritdoc/>
+    public virtual async Task<RepositoryWriteResult<IReadOnlyList<T>>> CreateRangeAsync(
+        IEnumerable<T> entities,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entities);
+
+        var list = entities.ToList();
+        if (list.Count == 0)
+        {
+            return RepositoryWriteResult<IReadOnlyList<T>>.Created(Array.Empty<T>());
+        }
+
+        try
+        {
+            // Synchronous tracking operation — does not perform I/O
+            _dbSet.AddRange(list);
+
+            // Asynchronous commit performs the actual database I/O
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Created range of {Count} entities of type {EntityType}.", list.Count, typeof(T).Name);
+            return RepositoryWriteResult<IReadOnlyList<T>>.Created(list.AsReadOnly());
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogError(ex, "Database update error creating range of {EntityType}.", typeof(T).Name);
+            throw new PersistenceException($"Failed to persist range of new {typeof(T).Name} records to the database.", ex);
+        }
+    }
+
+    /// <inheritdoc/>
     public virtual async Task<RepositoryWriteResult<T>> UpdateAsync(
         int id,
         Action<T> applyChanges,

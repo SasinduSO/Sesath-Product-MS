@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using WaterlilyInventory.Web.Caching;
 using WaterlilyInventory.Web.Common.Exceptions;
 using WaterlilyInventory.Web.Common.Results;
@@ -8,6 +9,7 @@ using WaterlilyInventory.Web.Domain.Entities;
 using WaterlilyInventory.Web.DTOs.Products;
 using WaterlilyInventory.Web.Repositories.Interfaces;
 using WaterlilyInventory.Web.Services.Interfaces;
+using WaterlilyInventory.Web.Services.Parsing;
 
 namespace WaterlilyInventory.Web.Services.Implementations;
 
@@ -22,6 +24,7 @@ public class ProductService : IProductService
     private readonly IProductRepository _productRepository;
     private readonly IAppCache _cache;
     private readonly ILogger<ProductService> _logger;
+    private readonly IProductSpreadsheetParser _spreadsheetParser;
 
     /// <summary>
     /// Initializes a new instance of <see cref="ProductService"/>.
@@ -30,11 +33,13 @@ public class ProductService : IProductService
     public ProductService(
         IProductRepository productRepository,
         IAppCache cache,
-        ILogger<ProductService> logger)
+        ILogger<ProductService> logger,
+        IProductSpreadsheetParser? spreadsheetParser = null)
     {
         _productRepository = productRepository ?? throw new ArgumentNullException(nameof(productRepository));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _spreadsheetParser = spreadsheetParser ?? new ProductSpreadsheetParser(NullLogger<ProductSpreadsheetParser>.Instance);
     }
 
     /// <inheritdoc/>
@@ -272,6 +277,195 @@ public class ProductService : IProductService
         }
     }
 
+    /// <inheritdoc/>
+    public async Task<OperationResult<BulkProductPreviewDto>> PreviewBulkProductsAsync(
+        Stream fileStream,
+        string fileName,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(fileStream);
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return OperationResult<BulkProductPreviewDto>.ValidationFailure("A valid file name must be provided.");
+        }
+
+        try
+        {
+            var parsedRows = await _spreadsheetParser.ParseAsync(fileStream, fileName, cancellationToken);
+
+            if (parsedRows.Count == 0)
+            {
+                return OperationResult<BulkProductPreviewDto>.ValidationFailure("The uploaded file does not contain any product records.");
+            }
+
+            var validRecords = new List<BulkProductRowDto>();
+            var invalidRecords = new List<BulkProductRowDto>();
+            var allRecords = new List<BulkProductRowDto>();
+
+            foreach (var row in parsedRows)
+            {
+                var errors = new List<string>();
+                var fieldErrors = new Dictionary<string, string>();
+
+                // Include any low-level parse errors
+                if (row.ParseErrors.Count > 0)
+                {
+                    errors.AddRange(row.ParseErrors);
+                }
+
+                // Service-layer boundary validation
+                bool isDomainValid = ValidateProductInput(
+                    row.Name,
+                    row.Category,
+                    row.ParsedPrice,
+                    row.ParsedStock,
+                    out var domainErrors);
+
+                if (!isDomainValid && domainErrors != null)
+                {
+                    foreach (var kvp in domainErrors)
+                    {
+                        var combinedMsg = string.Join(" ", kvp.Value);
+                        errors.Add(combinedMsg);
+                        fieldErrors[kvp.Key] = combinedMsg;
+                    }
+                }
+
+                // Check missing or unparseable price if not already flagged
+                if (!row.ParsedPrice.HasValue && !fieldErrors.ContainsKey(nameof(Product.Price)))
+                {
+                    const string priceMsg = "Price is required and must be a valid number without letters.";
+                    errors.Add(priceMsg);
+                    fieldErrors[nameof(Product.Price)] = priceMsg;
+                }
+
+                // Check missing or unparseable stock if not already flagged
+                if (!row.ParsedStock.HasValue && !fieldErrors.ContainsKey(nameof(Product.Stock)))
+                {
+                    const string stockMsg = "Stock quantity is required and must be a whole number without letters.";
+                    errors.Add(stockMsg);
+                    fieldErrors[nameof(Product.Stock)] = stockMsg;
+                }
+
+                bool isValid = errors.Count == 0;
+                var normalizedCat = isValid ? NormalizeCategory(row.Category) : row.Category;
+
+                var rowDto = new BulkProductRowDto(
+                    RowNumber: row.RowNumber,
+                    RawId: row.RawId,
+                    Name: row.Name,
+                    Category: normalizedCat,
+                    Price: row.ParsedPrice,
+                    RawPrice: row.RawPrice,
+                    Stock: row.ParsedStock,
+                    RawStock: row.RawStock,
+                    IsValid: isValid,
+                    Errors: errors.AsReadOnly(),
+                    FieldErrors: fieldErrors
+                );
+
+                allRecords.Add(rowDto);
+                if (isValid)
+                {
+                    validRecords.Add(rowDto);
+                }
+                else
+                {
+                    invalidRecords.Add(rowDto);
+                }
+            }
+
+            var preview = new BulkProductPreviewDto(
+                TotalRecords: allRecords.Count,
+                ValidRecordsCount: validRecords.Count,
+                InvalidRecordsCount: invalidRecords.Count,
+                ValidRecords: validRecords.AsReadOnly(),
+                InvalidRecords: invalidRecords.AsReadOnly(),
+                AllRecords: allRecords.AsReadOnly()
+            );
+
+            return OperationResult<BulkProductPreviewDto>.Success(
+                preview,
+                $"Processed {allRecords.Count} records: {validRecords.Count} valid, {invalidRecords.Count} rejected.");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to parse or preview bulk products from file '{FileName}'.", fileName);
+            return OperationResult<BulkProductPreviewDto>.PersistenceFailure($"An error occurred while parsing the file: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<OperationResult<BulkProductImportResultDto>> ImportBulkProductsAsync(
+        IEnumerable<CreateProductDto> products,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(products);
+
+        var productList = products.ToList();
+        if (productList.Count == 0)
+        {
+            return OperationResult<BulkProductImportResultDto>.ValidationFailure("No valid products provided to import.");
+        }
+
+        var entitiesToCreate = new List<Product>();
+
+        // Re-validate each product at service boundary before writing
+        for (int i = 0; i < productList.Count; i++)
+        {
+            var dto = productList[i];
+            if (!ValidateProductInput(dto.Name, dto.Category, dto.Price, dto.Stock, out var validationErrors))
+            {
+                var firstError = validationErrors.Values.FirstOrDefault()?.FirstOrDefault() ?? "Invalid product data.";
+                return OperationResult<BulkProductImportResultDto>.ValidationFailure($"Product at index {i + 1} ('{dto.Name}') failed validation: {firstError}");
+            }
+
+            entitiesToCreate.Add(new Product
+            {
+                Name = dto.Name.Trim(),
+                Category = NormalizeCategory(dto.Category),
+                Price = dto.Price!.Value,
+                Stock = dto.Stock!.Value
+            });
+        }
+
+        try
+        {
+            var writeResult = await _productRepository.CreateRangeAsync(entitiesToCreate, cancellationToken);
+
+            if (writeResult.Outcome != WriteOutcome.Created || writeResult.Entity is null)
+            {
+                return OperationResult<BulkProductImportResultDto>.PersistenceFailure("Failed to persist products to the database.");
+            }
+
+            var createdEntities = writeResult.Entity;
+            var createdIds = createdEntities.Select(p => p.Id).ToList();
+
+            // Invalidate affected cache entries ONLY AFTER confirmed successful persistence commit
+            TryInvalidateCache();
+
+            _logger.LogInformation("Successfully imported {Count} products in bulk.", createdIds.Count);
+
+            return OperationResult<BulkProductImportResultDto>.Success(
+                new BulkProductImportResultDto(createdIds.Count, createdIds.AsReadOnly()),
+                $"Successfully imported {createdIds.Count} products into inventory.");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (PersistenceException ex)
+        {
+            _logger.LogError(ex, "Persistence error occurred while importing {Count} products in bulk.", entitiesToCreate.Count);
+            return OperationResult<BulkProductImportResultDto>.PersistenceFailure("A database error occurred while importing products.");
+        }
+    }
+
     /// <summary>
     /// Category Normalization Policy:
     /// Trims leading and trailing whitespace, collapses multiple internal whitespace characters into single spaces,
@@ -315,7 +509,7 @@ public class ProductService : IProductService
     /// Centralized input validation rules for product creation and modification.
     /// Matches the data annotations on DTOs and verifies boundary constraints.
     /// </summary>
-    private static bool ValidateProductInput(
+    public static bool ValidateProductInput(
         string? name,
         string? category,
         decimal? price,

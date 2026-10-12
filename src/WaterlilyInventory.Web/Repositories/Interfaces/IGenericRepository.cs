@@ -37,6 +37,15 @@ public interface IGenericRepository<T> where T : class, IEntity
     Task<RepositoryWriteResult<T>> CreateAsync(T entity, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Adds a range of entities to the database and commits the transaction asynchronously.
+    /// On success, returns <see cref="RepositoryWriteResult{T}.Created"/> with the persisted collection.
+    /// </summary>
+    /// <param name="entities">The collection of entities to create.</param>
+    /// <param name="cancellationToken">Cancellation token for the database operation.</param>
+    /// <returns>A repository write result indicating creation outcome with persisted entities.</returns>
+    Task<RepositoryWriteResult<IReadOnlyList<T>>> CreateRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Updates an existing entity by loading authoritative database state, applying permitted changes,
     /// detecting whether changes actually occurred, and committing asynchronously.
     /// Returns <see cref="RepositoryWriteResult{T}.Unchanged"/> if submitted values match stored values,

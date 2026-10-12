@@ -25,4 +25,16 @@ public interface IProductService
 
     /// <summary>Deletes a product by Id. Returns DeleteProductResultDto containing the deleted Id.</summary>
     Task<OperationResult<DeleteProductResultDto>> DeleteProductAsync(int id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Parses an uploaded bulk product spreadsheet (CSV or Excel) and executes domain validation
+    /// on every extracted row. Returns a preview segregating acceptable and rejected records without persisting.
+    /// </summary>
+    Task<OperationResult<BulkProductPreviewDto>> PreviewBulkProductsAsync(Stream fileStream, string fileName, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists approved valid products in bulk to the database within a single persistence transaction
+    /// and invalidates the affected product catalog and report caches.
+    /// </summary>
+    Task<OperationResult<BulkProductImportResultDto>> ImportBulkProductsAsync(IEnumerable<CreateProductDto> products, CancellationToken cancellationToken = default);
 }
