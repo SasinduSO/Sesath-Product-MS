@@ -308,5 +308,5 @@ WaterlilyInventory/
    - For this assessment dataset (13 products), search, category filtering, sorting, and pagination operate on the collection loaded via `GET /products/data`. On enterprise catalogs (> 10,000 items), server-side pagination with SQL `OFFSET/FETCH` would be introduced.
 2. **Single Display Currency**:
    - Products are priced in a single configurable display currency (`USD`). Multi-currency conversion is not implemented.
-3. **Deferred Automated Testing Suite**:
-   - Comprehensive **MSTest** and **Moq** unit tests are deliberately deferred to the next required development stage as defined in `docs/TestingBacklog.md`. All Service, Repository, and Cache interfaces are fully mockable.
+3. **Automated Testing Suite (MSTest & Moq)**:
+   - Full unit and component test suite implemented and verified in [`tests/WaterlilyInventory.UnitTests/`](tests/WaterlilyInventory.UnitTests/README.md). Covers real `ProductService`, `ReportService`, in-memory `AppCache`, deterministic clock expiration, and generation race protection (157 passed tests, 100% service line coverage). See [docs/TestingResults.md](docs/TestingResults.md) for full execution evidence.

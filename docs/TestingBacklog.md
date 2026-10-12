@@ -1,8 +1,8 @@
-# WaterlilyInventory — Deferred Automated Testing Backlog (MSTest & Moq)
+# WaterlilyInventory — Automated Testing Backlog & Verification (MSTest & Moq)
 
-> **Status:** ⏸️ **DEFERRED (Required Next Development Stage)**  
-> This document specifies the comprehensive suite of automated unit tests to be implemented in the designated testing phase using **MSTest** and **Moq**.  
-> The application's interfaces, dependency injection setup, and operation result contracts were deliberately designed to ensure seamless testability without refactoring.
+> **Status:** ✅ **COMPLETE (Implemented in Stage 7, Checkpoints 7A–7F)**  
+> This document records the automated unit test specifications that were implemented and verified in `tests/WaterlilyInventory.UnitTests/`.  
+> For actual execution results, coverage metrics, and evidence, see [docs/TestingResults.md](TestingResults.md) and [tests/WaterlilyInventory.UnitTests/README.md](../tests/WaterlilyInventory.UnitTests/README.md).
 
 ---
 

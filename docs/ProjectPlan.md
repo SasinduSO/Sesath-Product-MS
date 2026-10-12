@@ -500,4 +500,3 @@ FUNCTION Repository.UpdateAsync(id, values, token)
 | 4 | Prompt 4 | Controllers, routes, themed layout, Razor shells, asset loading |
 | 5 | Prompt 5 | Full AJAX CRUD, all 5 report panels, Chart.js, complete frontend |
 | 6 | Prompt 6 | Run instructions, smoke-check evidence, handoff documentation |
-| Later | TBD | MSTest/Moq unit tests |

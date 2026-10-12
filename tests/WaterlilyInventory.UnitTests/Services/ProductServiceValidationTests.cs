@@ -285,6 +285,16 @@ public sealed class ProductServiceValidationTests
         _cacheMock.Verify(c => c.InvalidateProductAndReports(productId), Times.Once);
     }
 
+    [TestMethod]
+    [DataRow(null)]
+    [DataRow("")]
+    [DataRow("   ")]
+    public void NormalizeCategory_NullOrWhitespace_ReturnsEmptyString(string? input)
+    {
+        var result = ProductService.NormalizeCategory(input!);
+        Assert.AreEqual(string.Empty, result);
+    }
+
     // =========================================================================
     // 3. PRICE VALIDATION MATRIX (Create & Update)
     // =========================================================================

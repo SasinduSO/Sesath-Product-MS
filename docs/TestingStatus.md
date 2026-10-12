@@ -14,7 +14,7 @@
 | **7C** | Update and Delete Service tests | ✅ COMPLETE | 20 (35 cum.) | 20 (35 cum.) | 0 | 0 | 2026-10-12 |
 | **7D** | Validation boundaries, failures, cancellation | ✅ COMPLETE | 94 (129 cum.) | 94 (129 cum.) | 0 | 0 | 2026-10-12 |
 | **7E** | Cache component & Report Service tests | ✅ COMPLETE | 25 (154 cum.) | 25 (154 cum.) | 0 | 0 | 2026-10-12 |
-| **7F** | Full suite execution, evidence, documentation | 🔲 PENDING | — | — | — | — | — |
+| **7F** | Full suite execution, evidence, documentation | ✅ COMPLETE | 157 (157 cum.) | 157 (157 cum.) | 0 | 0 | 2026-10-12 |
 
 ---
 
@@ -310,6 +310,61 @@ Proceed to **Prompt 7F — Full run, evidence, and the test-project README**.
 ---
 
 ## Checkpoint 7F — Full run, evidence, and the test-project README
-**Status:** 🔲 PENDING  
-**Scope:** Full suite execution, TRX report, coverage analysis, and finalized test README.
+
+**Status:** ✅ COMPLETE  
+**Date:** 2026-10-12  
+
+### 1. Completed Deliverables & Files
+
+| File | Purpose |
+|---|---|
+| `tests/WaterlilyInventory.UnitTests/README.md` | Finalized technical README for the unit test project documenting architecture boundaries, Arrange/Act/Assert example, copyable verified run commands (solution, project, categories, TRX, Cobertura), application delegate callback vs. Moq callback distinction, real vs. mocked boundaries, cache expiration testing via `TestClock : ISystemClock`, troubleshooting guide, and extension guidelines. |
+| `docs/TestingResults.md` | Detailed evidence record capturing actual commands, test discovery/execution counts (157 / 157 passed, 0 failed, 0 skipped), Cobertura line and branch coverage rates (100% lines for `ProductService` and `ReportService`), TRX artifact path, production fixes, and remaining integration boundaries. |
+| `docs/TestingPlan.md` | Finalized test plan marking Stage 7F complete. |
+| `docs/TestingBacklog.md` | Updated backlog marking all Service and Cache unit test items complete and referencing the implemented test suite. |
+| `docs/BuildStatus.md` | Updated build status recording completion of Stage 7 (Checkpoints 7A through 7F). |
+| `README.md` | Added short link from root application README to `tests/WaterlilyInventory.UnitTests/README.md` and `docs/TestingResults.md`. |
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceValidationTests.cs` | Added unit test covering defensive `NormalizeCategory` null/whitespace guards (`NormalizeCategory_NullOrWhitespace_ReturnsEmptyString`, 3 executions). |
+
+### 2. Actual Commands Executed & Evidence
+
+```powershell
+# Combined Full Execution: Run all 157 tests, generate machine-readable TRX report, and collect Cobertura coverage
+dotnet test --project tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj `
+  --report-trx --results-directory TestResults --report-trx-filename test_results.trx `
+  --coverage --coverage-output-format cobertura --coverage-output coverage.cobertura.xml
+
+# Output:
+# Running tests from ...\tests\WaterlilyInventory.UnitTests\bin\Debug\net10.0\WaterlilyInventory.UnitTests.dll (net10.0|x64)
+# C:\...\WaterlilyInventory.UnitTests.dll (net10.0|x64) passed (2s 411ms)
+#
+#   In process file artifacts produced:
+#     - C:\Users\Asus\Desktop\Free Projects\WaterlilyInventory\TestResults\coverage.cobertura.xml
+#     - C:\Users\Asus\Desktop\Free Projects\WaterlilyInventory\TestResults\test_results.trx
+#
+# Test run summary: Passed!
+#   total: 157
+#   failed: 0
+#   succeeded: 157
+#   skipped: 0
+#   duration: 3s 802ms
+```
+
+### 3. Code Coverage Measured
+
+Using Microsoft Testing Platform's native code coverage collector:
+- **`ProductService`**: **100.0%** line coverage (113 / 113 lines), **92.9%** branch coverage (39 / 42 branches)
+- **`ReportService`**: **100.0%** line coverage (9 / 9 lines), **50.0%** branch coverage (3 / 6 branches)
+- **`AppCache`**: **75.6%** line coverage (31 / 41 lines), **75.0%** branch coverage (12 / 16 branches)
+- **Overall Assembly**: **33.1%** (460 / 1,389 valid lines; remaining lines belong to controllers, SQL repositories, Razor views, and program startup, which are intentionally excluded from unit tests to preserve complete database and network isolation).
+
+### 4. Production Fixes Required & Verified
+- **Price Range Limit (`decimal(18,2)`)**: Enforced upper bound (`price.Value > 999999999999999.99m`) in `ProductService.ValidateProductInput`, `CreateProductDto.Validate()`, and `UpdateProductDto.Validate()` to protect SQL Server persistence from unhandled arithmetic overflow exceptions.
+
+### 5. Blockers
+**None.**
+
+### 6. Phase Conclusion
+Stage 7 (Unit Testing with MSTest and Moq) is **100% COMPLETE**. All 157 tests are passing truthfully with zero skipped tests and zero mock leaks.
+
 

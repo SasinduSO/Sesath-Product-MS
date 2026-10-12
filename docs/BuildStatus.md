@@ -548,8 +548,8 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
 
 ## Stage 7 — Unit Testing (MSTest & Moq)
 
-**Status:** 🔄 IN PROGRESS (Stages 7A, 7B, 7C, 7D, and 7E Complete)  
-**Detailed Tracking:** See [docs/TestingStatus.md](TestingStatus.md) and [docs/TestingPlan.md](TestingPlan.md).
+**Status:** ✅ COMPLETE (Checkpoints 7A through 7F Verified)  
+**Detailed Tracking:** See [docs/TestingStatus.md](TestingStatus.md), [docs/TestingPlan.md](TestingPlan.md), and [docs/TestingResults.md](TestingResults.md).
 
 ### Checkpoint 7A — Configure MSTest, Moq & First Meaningful Test
 - **Status:** ✅ COMPLETE
@@ -604,6 +604,16 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
   - 7E.1: List reads use `CachedAsync`, detail reads use `CachedLongAsync`, independent keys for product IDs; secondary cache invalidation failure preserves committed persistence outcome without write retry across Create, Update, and Delete.
   - 7E.2: Real in-memory `AppCache` with `IMemoryCache`: miss-then-hit, key separation, empty collection retention, null non-retention, factory exception/cancellation safety, shared scope invalidation across all key types, zero/false value preservation, 5-minute absolute expiration without sliding extension via `TestClock : ISystemClock`, CachedLong time-resilience, and generation-based stale in-flight read race guard via `TaskCompletionSource`.
   - 7E.3: Real `ReportService` with mocked dependencies: all 5 distinct report datasets, threshold 0 validity, negative threshold rejection before DB access, empty datasets returned cleanly, tied highest-value categories preserved, persistence failures handled safely, cache hits bypass repository, cancellation propagates cleanly, and concurrency check proving `maxConcurrentCalls == 1` (strictly sequential, non-overlapping repository queries).
-- **Production Fixes Required:** None.
-- **Next Stage:** Checkpoint 7F — Full suite execution, evidence, documentation.
+### Checkpoint 7F — Full Run, Evidence, and Test Documentation
+- **Status:** ✅ COMPLETE
+- **Execution Results:** 157 discovered, 157 executed, 157 passed, 0 failed, 0 skipped (Duration: ~2.4s).
+- **Deliverables Completed:**
+  - Machine-readable TRX report generated (`TestResults/test_results.trx`).
+  - Native MTP Cobertura code coverage measured (`TestResults/coverage.cobertura.xml`): `ProductService` (100.0% lines), `ReportService` (100.0% lines), `AppCache` (75.6% lines).
+  - Test project technical documentation finalized in `tests/WaterlilyInventory.UnitTests/README.md`.
+  - Comprehensive execution evidence recorded in `docs/TestingResults.md`.
+  - Backlog marked complete in `docs/TestingBacklog.md`.
+- **Production Fixes Verified:** SQL Server `decimal(18,2)` range limit enforcement in `ProductService.ValidateProductInput`, `CreateProductDto.Validate()`, and `UpdateProductDto.Validate()`.
+- **Stage 7 Outcome:** Full unit testing suite is 100% complete and fully verified.
+
 
