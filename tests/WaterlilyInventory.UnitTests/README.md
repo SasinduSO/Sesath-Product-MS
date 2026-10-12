@@ -168,8 +168,45 @@ Comprehensive parameterized data-driven tests exercising the real `ProductServic
 
 ---
 
-## 9. Troubleshooting & Technical Guidelines
+## 9. Checkpoint 7E — Cache/Delegate Behaviour and Report Service Tests (25 Tests / 154 Cumulative)
 
+### 7E.1 Service Cache Contracts (4 Tests)
+- `CreateProduct_CacheInvalidationThrows_PreservesPersistenceSuccessWithoutRetry`: Proves secondary cache failure after confirmed write preserves truthful commit outcome and does not retry.
+- `UpdateProduct_CacheInvalidationThrows_PreservesPersistenceSuccessWithoutRetry`: Proves secondary cache failure after confirmed update preserves truthful commit outcome and does not retry.
+- `DeleteProduct_CacheInvalidationThrows_PreservesPersistenceSuccessWithoutRetry`: Proves secondary cache failure after confirmed deletion preserves truthful commit outcome and does not retry.
+- `GetProductById_DifferentProductIds_ProduceIndependentCacheKeys`: Proves independent detail queries populate separate namespaced cache keys.
+
+### 7E.2 Real Cache-Helper Component Tests (12 Tests in `Caching/AppCacheComponentTests.cs`)
+Exercises the real production `AppCache` with fresh `IMemoryCache` instances and `TestClock: ISystemClock`:
+- `CachedAsync_MissThenHit_InvokesFactoryOnceAndReturnsCachedValue`: Two reads with same key invoke factory exactly once.
+- `CachedLongAsync_MissThenHit_InvokesFactoryOnceAndReturnsCachedValue`: CachedLong miss then hit invokes factory once.
+- `CachedAsync_KeySeparation_MaintainsIndependentEntriesForDifferentKeys`: Distinct product and threshold keys remain independent.
+- `CachedAsync_SuccessfulEmptyCollection_IsRetainedInCache`: Empty collection is cached and returned without re-invoking loader.
+- `CachedAsync_MissingProductOrNull_IsNotRetainedInCache`: Null result is not cached; subsequent request re-invokes factory.
+- `CachedAsync_FactoryThrowsException_DoesNotPopulateCache`: Exception does not contaminate cache; subsequent request succeeds.
+- `CachedAsync_FactoryCancelled_DoesNotPopulateCache`: Cancelled request does not contaminate cache; subsequent request succeeds.
+- `InvalidateProductAndReports_InvalidatesBothModesAndRepresentativeKeys`: Shared scope invalidates list, detail, and all report threshold keys.
+- `CachedAsync_ZeroOrFalseValue_IsNotConfusedWithMissingReference`: Reference object with zero/false is preserved and not treated as missing.
+- `CachedAsync_AbsoluteExpiration_ExpiresAfterFiveMinutesAndHitsDoNotExtend`: Absolute 5-minute deadline enforced via `TestClock`; hit at 4m 50s does not extend deadline; expires at 5m 10s.
+- `CachedLongAsync_NoTimeBasedExpiration_SurvivesPastOrdinaryCacheDuration`: Survives 24 hours without time-based eviction; refreshes only on explicit invalidation.
+- `StaleInFlightRead_OldGenerationLoad_DoesNotOverwriteNewGenerationData`: `TaskCompletionSource`-controlled race proving generation advancement prevents slow old-generation load from overwriting fresh new-generation data.
+
+### 7E.3 Report Service Unit Tests (8 Tests / 9 Executions in `Services/ReportServiceTests.cs`)
+Exercises real `ReportService` with mocked repository and cache:
+- `GetDashboard_ValidThreshold_ReturnsAllFiveDistinctDatasetsAndPreservesThreshold`: All 5 distinct datasets returned, threshold preserved, multiple ties preserved in highest-value category, top 5 ordering preserved.
+- `GetDashboard_ThresholdZero_IsAcceptedAndPassedToRepositoryAndKey`: Threshold = 0 accepted, passed to repository, and namespaced in cache key.
+- `GetDashboard_NegativeThreshold_ReturnsValidationFailureBeforeDataAccess`: Defensive threshold validation rejects negative inputs (-1, -10) before data access.
+- `GetDashboard_EmptyReportDatasets_ReturnsSuccessfulDashboardWithEmptyCollections`: Empty stored procedure outputs return successful dashboard with empty collections (never 404 or null).
+- `GetDashboard_AnyReportPersistenceFailure_ReturnsSafeFailureNotInventedZeroes`: Persistence failure on any required report returns documented safe failure without fabricated zeroes.
+- `GetDashboard_CacheHits_BypassesRepositoryCompletely`: Full cache hit on all 5 reports returns data without querying repository.
+- `GetDashboard_CancellationPropagates_ThrowsOperationCanceledException`: Cancellation token cleanly throws `OperationCanceledException`.
+- `GetDashboard_SequentialExecution_DoesNotStartOverlappingRepositoryCalls`: Concurrency tracking proves `maxConcurrentCalls == 1` across all 5 procedure calls, confirming no overlapping queries on the scoped DbContext.
+
+---
+
+## 10. Troubleshooting & Technical Guidelines
+
+- **Deterministic Cache Clock Seam**: `MemoryCacheOptions.Clock` in ASP.NET Core 10 uses `Microsoft.Extensions.Internal.ISystemClock`. `TestClock` implements this interface to advance time deterministically without sleeps or reflection.
 - **MSTest v4 Asynchronous Exceptions**: MSTest 4 unified exception assertion is `Assert.ThrowsAsync<TException>(Func<Task>)`.
 - **MSTEST0052 Analyzer Compliance**: In MSTest 4, use `[DynamicData(nameof(...))]` without `DynamicDataSourceType.Method` to enable default auto-detection.
 - **DynamicData vs DataRow**: Used `[DynamicData]` for monetary `decimal` values to preserve decimal precision without downcasting to `double`.

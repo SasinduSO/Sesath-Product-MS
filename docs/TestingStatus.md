@@ -13,7 +13,7 @@
 | **7B** | Create and Read Service tests | ✅ COMPLETE | 15 | 15 | 0 | 0 | 2026-10-12 |
 | **7C** | Update and Delete Service tests | ✅ COMPLETE | 20 (35 cum.) | 20 (35 cum.) | 0 | 0 | 2026-10-12 |
 | **7D** | Validation boundaries, failures, cancellation | ✅ COMPLETE | 94 (129 cum.) | 94 (129 cum.) | 0 | 0 | 2026-10-12 |
-| **7E** | Cache component & Report Service tests | 🔲 PENDING | — | — | — | — | — |
+| **7E** | Cache component & Report Service tests | ✅ COMPLETE | 25 (154 cum.) | 25 (154 cum.) | 0 | 0 | 2026-10-12 |
 | **7F** | Full suite execution, evidence, documentation | 🔲 PENDING | — | — | — | — | — |
 
 ---
@@ -235,13 +235,81 @@ Proceed to **Prompt 7E — Cache component & Report Service tests**.
 ---
 
 ## Checkpoint 7E — Cache/delegate behaviour and Report Service tests
-**Status:** 🔲 PENDING  
-- **7E.1**: Service cache contracts (`Cached` vs. `CachedLong`).
-- **7E.2**: Real `AppCache` in-memory component tests (expiration, generation advancement, stale read guard).
-- **7E.3**: `ReportService` dashboard aggregation, ties, and sequential repository awaits.
+
+**Status:** ✅ COMPLETE  
+**Date:** 2026-10-12  
+
+### 1. Completed Deliverables & Files
+
+| File | Purpose |
+|---|---|
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceCreateTests.cs` | Added secondary cache invalidation failure test proving committed creation is preserved without retrying the repository write. |
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceReadTests.cs` | Added independent product ID cache key separation test for detail reads. |
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceUpdateTests.cs` | Added secondary cache invalidation failure test proving committed update is preserved without retrying the repository write. |
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceDeleteTests.cs` | Added secondary cache invalidation failure test proving committed deletion is preserved without retrying the repository write. |
+| `tests/WaterlilyInventory.UnitTests/Caching/AppCacheComponentTests.cs` | 12 component tests in `CacheComponent` category using real `AppCache` and `IMemoryCache`: miss-then-hit, key separation, empty collection retention, null non-retention, exception/cancellation safety, shared scope invalidation, zero/false value preservation, 5-minute absolute expiration without sliding extension via `TestClock : ISystemClock`, CachedLong time-resilience, and generation-based stale in-flight read prevention via `TaskCompletionSource`. |
+| `tests/WaterlilyInventory.UnitTests/Services/ReportServiceTests.cs` | 8 tests (9 runner executions) in `ReportService` category using real `ReportService` and mocked repository/cache: all 5 distinct report datasets, threshold zero valid, negative threshold rejected (-1, -10), empty datasets returned safely, tied highest-value categories preserved, persistence failures safely handled, cache hits bypass repository, cancellation propagates, and concurrency check proving `maxConcurrentCalls == 1` (strictly sequential, non-overlapping repository queries). |
+| `tests/WaterlilyInventory.UnitTests/README.md` | Documented Section 9 (Checkpoint 7E breakdown) and Section 10 (Troubleshooting & Known Gotchas). |
+| `docs/TestingPlan.md` | Updated contract mapping with Stage 7E completed status and observations on `MemoryCacheOptions.Clock` and sequential repository execution. |
+| `docs/TestingStatus.md` | This document. |
+| `docs/BuildStatus.md` | Updated build status with Checkpoint 7E test outcomes. |
+
+### 2. Actual Commands Executed & Evidence
+
+```powershell
+# 1. CacheComponent Filtered Tests Run
+dotnet test --filter "TestCategory=CacheComponent"
+# Output:
+# Running tests from ...\tests\WaterlilyInventory.UnitTests\bin\Debug\net10.0\WaterlilyInventory.UnitTests.dll (net10.0|x64)
+# C:\...\WaterlilyInventory.UnitTests.dll (net10.0|x64) passed (1s 506ms)
+# Test run summary: Passed!
+#   total: 12
+#   failed: 0
+#   succeeded: 12
+#   skipped: 0
+#   duration: 2s 153ms
+
+# 2. ReportService Filtered Tests Run
+dotnet test --filter "TestCategory=ReportService"
+# Output:
+# Running tests from ...\tests\WaterlilyInventory.UnitTests\bin\Debug\net10.0\WaterlilyInventory.UnitTests.dll (net10.0|x64)
+# C:\...\WaterlilyInventory.UnitTests.dll (net10.0|x64) passed (1s 721ms)
+# Test run summary: Passed!
+#   total: 9
+#   failed: 0
+#   succeeded: 9
+#   skipped: 0
+#   duration: 2s 475ms
+
+# 3. Full Solution Test Run
+dotnet test
+# Output:
+# Running tests from ...\tests\WaterlilyInventory.UnitTests\bin\Debug\net10.0\WaterlilyInventory.UnitTests.dll (net10.0|x64)
+# C:\...\WaterlilyInventory.UnitTests.dll (net10.0|x64) passed (2s 178ms)
+# Test run summary: Passed!
+#   total: 154
+#   failed: 0
+#   succeeded: 154
+#   skipped: 0
+#   duration: 3s 037ms
+```
+
+### 3. Production Fixes Required
+**None.** The application implementation in `AppCache.cs`, `ProductService.cs`, and `ReportService.cs` complies completely with all caching contracts, error policies, sequential coordination, and resilience specifications.
+
+### 4. Test Fixture Fixes Applied
+- **Deterministic Cache Expiration**: Leveraged `Microsoft.Extensions.Caching.Memory.MemoryCacheOptions.Clock` which implements `Microsoft.Extensions.Internal.ISystemClock`. Created `TestClock : ISystemClock` to advance time deterministically without real-time delays, production modifications, or reflection.
+- **Moq Strict Verification with SetupCachedMiss**: Helper methods `VerifyAllFiveRepositoryCalls` and `VerifyAllFiveCacheCalls` explicitly verify mock invocations before calling `VerifyNoOtherCalls()`.
+
+### 5. Blockers
+**None.**
+
+### 6. Next Action
+Proceed to **Prompt 7F — Full run, evidence, and the test-project README**.
 
 ---
 
 ## Checkpoint 7F — Full run, evidence, and the test-project README
 **Status:** 🔲 PENDING  
 **Scope:** Full suite execution, TRX report, coverage analysis, and finalized test README.
+

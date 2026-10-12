@@ -453,4 +453,55 @@ public sealed class ProductServiceReadTests
         _repositoryMock.VerifyNoOtherCalls();
         _cacheMock.VerifyNoOtherCalls();
     }
+
+    /// <summary>
+    /// Verifies that detail queries for distinct product Ids produce independent, isolated cache keys.
+    /// </summary>
+    [TestMethod]
+    public async Task GetProductById_DifferentProductIds_ProduceIndependentCacheKeys()
+    {
+        // Arrange
+        const int product1Id = 101;
+        const int product2Id = 102;
+        var dto1 = new ProductDto(product1Id, "Product One", "Electronics", 50m, 10);
+        var dto2 = new ProductDto(product2Id, "Product Two", "Accessories", 20m, 5);
+
+        _cacheMock.SetupCachedLongHit(CacheKeys.ProductById(product1Id), dto1);
+        _cacheMock.SetupCachedLongHit(CacheKeys.ProductById(product2Id), dto2);
+
+        var service = new ProductService(
+            _repositoryMock.Object,
+            _cacheMock.Object,
+            NullLogger<ProductService>.Instance);
+
+        // Act
+        var result1 = await service.GetProductByIdAsync(product1Id);
+        var result2 = await service.GetProductByIdAsync(product2Id);
+
+        // Assert
+        Assert.IsNotNull(result1);
+        Assert.IsTrue(result1.IsSuccess);
+        Assert.AreEqual(product1Id, result1.Data!.Id);
+
+        Assert.IsNotNull(result2);
+        Assert.IsTrue(result2.IsSuccess);
+        Assert.AreEqual(product2Id, result2.Data!.Id);
+
+        _cacheMock.Verify(
+            c => c.CachedLongAsync(
+                CacheKeys.ProductById(product1Id),
+                It.IsAny<AsyncDataFactory<ProductDto>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _cacheMock.Verify(
+            c => c.CachedLongAsync(
+                CacheKeys.ProductById(product2Id),
+                It.IsAny<AsyncDataFactory<ProductDto>>(),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _repositoryMock.VerifyNoOtherCalls();
+        _cacheMock.VerifyNoOtherCalls();
+    }
 }

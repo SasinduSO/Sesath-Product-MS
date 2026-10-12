@@ -204,4 +204,50 @@ public sealed class ProductServiceCreateTests
         _repositoryMock.Verify(r => r.CreateAsync(It.IsAny<Product>(), cancellationToken), Times.Once);
         _cacheMock.VerifyNoOtherCalls();
     }
+
+    /// <summary>
+    /// Verifies that if cache invalidation throws an unexpected secondary exception after the
+    /// repository has confirmed a commit, the service logs the secondary error, preserves the
+    /// truthful persistence success outcome, returns the persisted DTO, and does NOT retry the write.
+    /// </summary>
+    [TestMethod]
+    public async Task CreateProduct_CacheInvalidationThrows_PreservesPersistenceSuccessWithoutRetry()
+    {
+        // Arrange
+        const int generatedId = 301;
+        var dto = ProductTestBuilder.CreateValidDto();
+        var cancellationToken = CancellationToken.None;
+
+        _repositoryMock
+            .Setup(r => r.CreateAsync(It.IsAny<Product>(), cancellationToken))
+            .ReturnsAsync(ProductTestBuilder.CreateSuccessResult(id: generatedId));
+
+        // Arrange the secondary invalidation failure explicitly
+        _cacheMock
+            .Setup(c => c.InvalidateProductAndReports(generatedId))
+            .Throws(new InvalidOperationException("Simulated Redis/cache cluster invalidation failure."));
+
+        var service = new ProductService(
+            _repositoryMock.Object,
+            _cacheMock.Object,
+            NullLogger<ProductService>.Instance);
+
+        // Act
+        var result = await service.CreateProductAsync(dto, cancellationToken);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.IsSuccess, "Persistence success must be preserved even if secondary cache maintenance fails.");
+        Assert.IsNotNull(result.Data);
+        Assert.AreEqual(generatedId, result.Data.Id);
+
+        // Verify write count is strictly 1 (no retry)
+        _repositoryMock.Verify(r => r.CreateAsync(It.IsAny<Product>(), cancellationToken), Times.Once);
+
+        // Verify invalidation was attempted once
+        _cacheMock.Verify(c => c.InvalidateProductAndReports(generatedId), Times.Once);
+
+        _repositoryMock.VerifyNoOtherCalls();
+        _cacheMock.VerifyNoOtherCalls();
+    }
 }

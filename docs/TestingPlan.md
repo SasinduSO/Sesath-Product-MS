@@ -70,7 +70,7 @@ The unit-testing phase strictly enforces the boundary between service-level orch
 | **7B** | Create & Read Operations | ✅ COMPLETE (15 tests verified: 4 create tests + 9 read tests with parameter expansion) |
 | **7C** | Update & Delete Operations | ✅ COMPLETE (20 tests verified: 9 update tests + 7 delete tests with commit ordering and parameter expansion; 35 cumulative tests) |
 | **7D** | Validation Matrix, Error Policy, Cancellation | ✅ COMPLETE (94 tests verified: 87 validation matrix executions across Name, Category, Price, Stock, Id for Create/Update/Read/Delete + 7 cancellation/error propagation tests; 129 cumulative tests) |
-| **7E** | Cache Infrastructure & Report Service | - 7E.1: Service cache mode contracts (`Cached` vs. `CachedLong`)<br>- 7E.2: `AppCache` component tests with in-memory cache and generation tracking<br>- 7E.3: `ReportService` dashboard aggregation, ties, and sequential execution |
+| **7E** | Cache Infrastructure & Report Service | ✅ COMPLETE (25 tests verified: 4 cache contract/secondary failure tests across CRUD, 12 AppCache component tests with deterministic expiration and in-flight read race guard, 9 ReportService tests; 154 cumulative tests) |
 | **7F** | Full Run, Evidence & Finalization | - Complete suite execution, TRX report, coverage analysis, test README finalization |
 
 ---
@@ -88,3 +88,10 @@ The unit-testing phase strictly enforces the boundary between service-level orch
    - Genuine defect fixed during 7D: Enforced `decimal(18,2)` upper range limit (`price.Value > 999999999999999.99m`) in `ProductService.ValidateProductInput`, `CreateProductDto.Validate`, and `UpdateProductDto.Validate` to protect SQL Server persistence from unhandled arithmetic overflow.
 4. **Omission vs. Intentional Zero**:
    - `CreateProductDto` and `UpdateProductDto` define `decimal? Price` and `int? Stock`. Nullable numeric properties allow distinguishing an omitted field (`null`) from an intentional zero (`0.00m` / `0`), both of which are valid domain values.
+5. **Deterministic Expiration Testing via `MemoryCacheOptions.Clock`**:
+   - `Microsoft.Extensions.Caching.Memory.MemoryCacheOptions` in ASP.NET Core 10 exposes `Clock: Microsoft.Extensions.Internal.ISystemClock`.
+   - Implemented `TestClock : ISystemClock` inside `AppCacheComponentTests.cs` to advance time deterministically without `Thread.Sleep`, `Task.Delay`, altering production timeouts, or private-reflection hacking.
+6. **Sequential Execution of Stored Procedures in `ReportService`**:
+   - Scoped EF Core `DbContext` instances do not support concurrent operations on the same context. `ReportService.GetDashboardAsync` awaits the five stored-procedure queries sequentially rather than issuing parallel tasks with `Task.WhenAll`.
+   - Tested using atomic `Interlocked.Increment` and `Interlocked.Decrement` concurrency tracking, proving `maxConcurrentCalls == 1`.
+

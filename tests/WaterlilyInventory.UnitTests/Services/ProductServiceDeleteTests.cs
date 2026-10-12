@@ -320,4 +320,49 @@ public sealed class ProductServiceDeleteTests
         _repositoryMock.VerifyNoOtherCalls();
         _cacheMock.VerifyNoOtherCalls();
     }
+
+    /// <summary>
+    /// Verifies that if cache invalidation throws after the repository has confirmed a deletion commit,
+    /// the service logs the secondary error, preserves the truthful persistence success outcome,
+    /// returns the deleted DTO, and does NOT retry the deletion.
+    /// </summary>
+    [TestMethod]
+    public async Task DeleteProduct_CacheInvalidationThrows_PreservesPersistenceSuccessWithoutRetry()
+    {
+        // Arrange
+        const int productId = 101;
+        var cancellationToken = CancellationToken.None;
+
+        _repositoryMock
+            .Setup(r => r.DeleteAsync(productId, cancellationToken))
+            .ReturnsAsync(ProductTestBuilder.DeleteSuccessResult(productId));
+
+        // Arrange the secondary invalidation failure explicitly
+        _cacheMock
+            .Setup(c => c.InvalidateProductAndReports(productId))
+            .Throws(new InvalidOperationException("Simulated Redis/cache cluster invalidation failure."));
+
+        var service = new ProductService(
+            _repositoryMock.Object,
+            _cacheMock.Object,
+            NullLogger<ProductService>.Instance);
+
+        // Act
+        var result = await service.DeleteProductAsync(productId, cancellationToken);
+
+        // Assert
+        Assert.IsNotNull(result);
+        Assert.IsTrue(result.IsSuccess, "Persistence success must be preserved even if secondary cache maintenance fails.");
+        Assert.IsNotNull(result.Data);
+        Assert.AreEqual(productId, result.Data.DeletedId);
+
+        // Verify write count is strictly 1 (no retry)
+        _repositoryMock.Verify(r => r.DeleteAsync(productId, cancellationToken), Times.Once);
+
+        // Verify invalidation was attempted once
+        _cacheMock.Verify(c => c.InvalidateProductAndReports(productId), Times.Once);
+
+        _repositoryMock.VerifyNoOtherCalls();
+        _cacheMock.VerifyNoOtherCalls();
+    }
 }

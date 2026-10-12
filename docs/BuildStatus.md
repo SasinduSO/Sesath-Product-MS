@@ -548,7 +548,7 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
 
 ## Stage 7 — Unit Testing (MSTest & Moq)
 
-**Status:** 🔄 IN PROGRESS (Stages 7A, 7B, 7C, and 7D Complete)  
+**Status:** 🔄 IN PROGRESS (Stages 7A, 7B, 7C, 7D, and 7E Complete)  
 **Detailed Tracking:** See [docs/TestingStatus.md](TestingStatus.md) and [docs/TestingPlan.md](TestingPlan.md).
 
 ### Checkpoint 7A — Configure MSTest, Moq & First Meaningful Test
@@ -592,4 +592,18 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
   - Unexpected Exception Propagation: unhandled runtime defect (`InvalidOperationException`) escapes service unswallowed for `GlobalExceptionHandlingMiddleware`.
   - Inner Exception Diagnostic Suppression: sensitive database credentials / connection strings in inner exceptions are strictly suppressed from public response messages, errors, and data.
 - **Production Fixes Required:** Enforced `decimal(18,2)` upper range limit (`price.Value > 999999999999999.99m`) in `ProductService.ValidateProductInput`, `CreateProductDto.Validate()`, and `UpdateProductDto.Validate()`.
-- **Next Stage:** Checkpoint 7E — Cache component & Report Service tests.
+
+### Checkpoint 7E — Cache Component & Report Service Tests
+- **Status:** ✅ COMPLETE
+- **Test Suites:**
+  - 7E.1 Service Cache Contracts (`ProductServiceCreateTests`, `ProductServiceReadTests`, `ProductServiceUpdateTests`, `ProductServiceDeleteTests`) — 4 tests
+  - 7E.2 Real Cache-Helper Component Tests (`AppCacheComponentTests` in `Caching/`) — 12 tests
+  - 7E.3 Report Service Unit Tests (`ReportServiceTests` in `Services/`) — 8 tests (9 runner executions)
+- **Execution Results:** 25 discovered, 25 executed, 25 passed, 0 failed, 0 skipped (154 cumulative suite tests).
+- **Behaviors Verified:**
+  - 7E.1: List reads use `CachedAsync`, detail reads use `CachedLongAsync`, independent keys for product IDs; secondary cache invalidation failure preserves committed persistence outcome without write retry across Create, Update, and Delete.
+  - 7E.2: Real in-memory `AppCache` with `IMemoryCache`: miss-then-hit, key separation, empty collection retention, null non-retention, factory exception/cancellation safety, shared scope invalidation across all key types, zero/false value preservation, 5-minute absolute expiration without sliding extension via `TestClock : ISystemClock`, CachedLong time-resilience, and generation-based stale in-flight read race guard via `TaskCompletionSource`.
+  - 7E.3: Real `ReportService` with mocked dependencies: all 5 distinct report datasets, threshold 0 validity, negative threshold rejection before DB access, empty datasets returned cleanly, tied highest-value categories preserved, persistence failures handled safely, cache hits bypass repository, cancellation propagates cleanly, and concurrency check proving `maxConcurrentCalls == 1` (strictly sequential, non-overlapping repository queries).
+- **Production Fixes Required:** None.
+- **Next Stage:** Checkpoint 7F — Full suite execution, evidence, documentation.
+
