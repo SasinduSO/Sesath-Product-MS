@@ -11,7 +11,7 @@
 |---|---|---|---|---|---|---|---|
 | **7A** | Inspect contracts, configure MSTest, first test | ✅ COMPLETE | 1 | 1 | 0 | 0 | 2026-10-12 |
 | **7B** | Create and Read Service tests | ✅ COMPLETE | 15 | 15 | 0 | 0 | 2026-10-12 |
-| **7C** | Update and Delete Service tests | 🔲 PENDING | — | — | — | — | — |
+| **7C** | Update and Delete Service tests | ✅ COMPLETE | 20 (35 cum.) | 20 (35 cum.) | 0 | 0 | 2026-10-12 |
 | **7D** | Validation boundaries, failures, cancellation | 🔲 PENDING | — | — | — | — | — |
 | **7E** | Cache component & Report Service tests | 🔲 PENDING | — | — | — | — | — |
 | **7F** | Full suite execution, evidence, documentation | 🔲 PENDING | — | — | — | — | — |
@@ -114,8 +114,59 @@ Proceed to **Prompt 7C — Update and Delete Service tests**.
 ---
 
 ## Checkpoint 7C — Update and Delete Service tests
-**Status:** 🔲 PENDING  
-**Scope:** Implement `ProductServiceUpdateTests` and `ProductServiceDeleteTests`. Cover modified update, unchanged no-op update, not found, concurrency conflict, deletion success, deletion not found, and commit-before-invalidation ordering.
+
+**Status:** ✅ COMPLETE  
+**Date:** 2026-10-12  
+
+### 1. Completed Deliverables & Files
+
+| File | Purpose |
+|---|---|
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceUpdateTests.cs` | 9 tests (11 executions including DataRows) covering valid modified updates, unchanged no-op updates, not-found handling, boundary validation, concurrency conflicts, safe persistence exceptions, authoritative outcome precedence over cache, and commit-ordering guards. |
+| `tests/WaterlilyInventory.UnitTests/Services/ProductServiceDeleteTests.cs` | 7 tests (9 executions including DataRows) covering deletion success with `DeleteProductResultDto(DeletedId)`, not-found handling, invalid ID rejection, concurrency conflicts, safe persistence exceptions, and commit-ordering guards. |
+| `tests/WaterlilyInventory.UnitTests/Common/ProductTestBuilder.cs` | Added `CreateValidUpdateDto` builder. |
+| `tests/WaterlilyInventory.UnitTests/README.md` | Documented 35 cumulative verified tests, test categories, and Mock verification guidance. |
+| `docs/TestingPlan.md` | Updated contract mapping with Stage 7C completed status. |
+| `docs/TestingStatus.md` | This document. |
+| `docs/BuildStatus.md` | Updated build status with Checkpoint 7C test outcomes. |
+
+### 2. Actual Commands Executed & Evidence
+
+```powershell
+# 1. Focused Unit Tests Run (MTP)
+dotnet test --project tests/WaterlilyInventory.UnitTests/WaterlilyInventory.UnitTests.csproj
+# Output:
+# Running tests from ...\tests\WaterlilyInventory.UnitTests\bin\Debug\net10.0\WaterlilyInventory.UnitTests.dll (net10.0|x64)
+# Test run summary: Passed!
+#   total: 35
+#   failed: 0
+#   succeeded: 35
+#   skipped: 0
+#   duration: 2s 418ms
+
+# 2. Entire Solution Test Run
+dotnet test
+# Output:
+# Test run summary: Passed!
+#   total: 35
+#   failed: 0
+#   succeeded: 35
+#   skipped: 0
+#   duration: 2s 627ms
+```
+
+### 3. Production Fixes Required
+**None.** The application implementation in `ProductService.cs` correctly implements all update and delete semantics, commit-before-invalidation ordering, immutable primary keys, safe persistence failures, and authoritative persistence decisions.
+
+### 4. Test Fixture Fixes Applied
+- Adjusted test assertions to use the correct `DeleteProductResultDto.DeletedId` property name.
+- Explicitly verified critical repository write invocations (`UpdateAsync`, `DeleteAsync`) with `Times.Once` prior to `VerifyNoOtherCalls()` in failure path commit-ordering tests.
+
+### 5. Blockers
+**None.**
+
+### 6. Next Action
+Proceed to **Prompt 7D — Validation boundaries, failures, and cancellation**.
 
 ---
 

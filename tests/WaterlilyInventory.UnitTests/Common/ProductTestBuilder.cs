@@ -32,6 +32,21 @@ public static class ProductTestBuilder
     };
 
     /// <summary>
+    /// Creates a fresh valid <see cref="UpdateProductDto"/> with fixed deterministic values.
+    /// </summary>
+    public static UpdateProductDto CreateValidUpdateDto(
+        string name = "Updated Keyboard",
+        string category = "Electronics",
+        decimal price = 149.99m,
+        int stock = 50) => new()
+    {
+        Name = name,
+        Category = category,
+        Price = price,
+        Stock = stock
+    };
+
+    /// <summary>
     /// Creates a fresh valid <see cref="Product"/> domain entity with fixed values.
     /// </summary>
     public static Product CreateProduct(

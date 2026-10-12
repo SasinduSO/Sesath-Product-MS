@@ -548,7 +548,7 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
 
 ## Stage 7 — Unit Testing (MSTest & Moq)
 
-**Status:** 🔄 IN PROGRESS (Stages 7A and 7B Complete)  
+**Status:** 🔄 IN PROGRESS (Stages 7A, 7B, and 7C Complete)  
 **Detailed Tracking:** See [docs/TestingStatus.md](TestingStatus.md) and [docs/TestingPlan.md](TestingPlan.md).
 
 ### Checkpoint 7A — Configure MSTest, Moq & First Meaningful Test
@@ -568,4 +568,13 @@ Proceed to **Prompt 6 — Run, Verify, Document, and Hand Over**.
   - Create: valid creation with commit-then-invalidate ordering, validation failure without repository write, safe persistence exception handling with diagnostic suppression, and conflict write outcome mapping.
   - Read: full list cache miss executing factory delegate against repository, successful empty collection handling, persistence failure handling without fake empty collections, cache hit bypassing repository queries, detail read cache miss with exact field mapping, missing product 404, invalid ID validation before data access, detail persistence exception suppression, and detail queries strictly using `CachedLongAsync` with Id-specific keys.
 - **Production Fixes Required:** None.
-- **Next Stage:** Checkpoint 7C — Update and Delete Service tests.
+
+### Checkpoint 7C — Update and Delete Service Tests
+- **Status:** ✅ COMPLETE
+- **Test Suites:** `ProductServiceUpdateTests` (9 tests / 11 executions), `ProductServiceDeleteTests` (7 tests / 9 executions)
+- **Execution Results:** 20 discovered, 20 executed, 20 passed, 0 failed, 0 skipped (35 cumulative suite tests).
+- **Behaviors Verified:**
+  - Update: modified update with immutable primary keys and cache invalidation, unchanged no-op update with `"No changes were needed."` without invalidation, missing record 404, boundary validation, concurrency conflict outcome mapping, safe persistence exceptions, authoritative repository precedence over cache, and commit-ordering guards.
+  - Delete: deletion success with `DeleteProductResultDto(DeletedId)` and cache invalidation, missing record 404, invalid ID rejection, concurrency conflict outcome mapping, safe persistence exceptions, and commit-ordering guards.
+- **Production Fixes Required:** None.
+- **Next Stage:** Checkpoint 7D — Validation boundaries, failures, and cancellation.

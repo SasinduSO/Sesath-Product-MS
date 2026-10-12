@@ -53,7 +53,9 @@ tests/WaterlilyInventory.UnitTests/
 │   └── ProductTestBuilder.cs       # Deterministic builders for DTOs, entities, and write results
 ├── Services/
 │   ├── ProductServiceCreateTests.cs# Creation workflow, validation failure, persistence exception, safe error mapping
-│   └── ProductServiceReadTests.cs  # List/detail reads, cache hits/misses, delegate execution, empty collections, 404
+│   ├── ProductServiceReadTests.cs  # List/detail reads, cache hits/misses, delegate execution, empty collections, 404
+│   ├── ProductServiceUpdateTests.cs# Modified updates, unchanged no-ops, conflicts, commit ordering, authoritative outcomes
+│   └── ProductServiceDeleteTests.cs# Deletion workflows, 404, invalid IDs, conflicts, commit ordering guards
 ├── MSTestSettings.cs               # Assembly parallelization policy (MethodLevel)
 ├── WaterlilyInventory.UnitTests.csproj
 └── README.md                       # This documentation file
@@ -109,8 +111,33 @@ tests/WaterlilyInventory.UnitTests/
 
 ---
 
-## 7. Troubleshooting
+## 7. Checkpoint 7C — Update & Delete Service Tests (20 Tests / 35 Cumulative)
+
+### ProductServiceUpdateTests (9 tests / 11 executions)
+- `UpdateProduct_ValidChanges_ReturnsSuccessAndInvalidatesCache`: Verified valid modified update, updated DTO returned, authoritative Id preserved (primary key immutable), single repository write, and cache invalidation for updated Id.
+- `UpdateProduct_UnchangedValues_ReturnsSuccessWithoutInvalidation`: Verified repository `Unchanged` outcome maps to success with `"No changes were needed."` without invalidating caches.
+- `UpdateProduct_MissingProduct_ReturnsNotFoundWithoutInvalidation`: Verified missing product update returns `NotFound` without cache invalidation.
+- `UpdateProduct_InvalidInput_ReturnsValidationFailureWithoutDatabaseCallOrInvalidation` (3 test cases): `id = 0`, `-5`, and blank name fail validation at service boundary before repository call.
+- `UpdateProduct_ConcurrencyConflict_ReturnsConflictResultWithoutInvalidation`: Verified concurrency conflict outcome maps to `Conflict` (not generic NotFound or success) without cache invalidation.
+- `UpdateProduct_PersistenceException_ReturnsSafeFailureWithoutRetryOrInvalidation`: Verified expected persistence exception maps to safe `PersistenceFailure`, suppressing internal diagnostics and preventing retries.
+- `UpdateProduct_CachedDataExists_RejectsSuccessWhenRepositoryReportsNotFound`: Verified authoritative persistence decision: service reports `NotFound` when repository reports missing record, even if cached detail data existed.
+- `UpdateProduct_CommitOrdering_InvalidationCannotPrecedeSuccessfulWrite`: Verified that while repository write is in-flight (`TaskCompletionSource`), cache invalidation is NOT called; after write completion, invalidation executes once.
+- `UpdateProduct_CommitOrdering_UnsuccessfulCompletionDoesNotInvalidate`: Verified that if repository write fails or throws, cache invalidation is never invoked.
+
+### ProductServiceDeleteTests (7 tests / 9 executions)
+- `DeleteProduct_ExistingId_ReturnsSuccessAndInvalidatesCache`: Verified deletion success with `DeleteProductResultDto(DeletedId)` and single cache invalidation for the deleted Id.
+- `DeleteProduct_MissingProduct_ReturnsNotFoundWithoutInvalidation`: Verified missing product deletion returns `NotFound` without cache invalidation.
+- `DeleteProduct_InvalidId_ZeroOrNegative_ReturnsValidationFailureWithoutDataAccess` (3 test cases): `id = 0`, `-1`, `-100` fail validation at service boundary before data mutation.
+- `DeleteProduct_ConcurrencyConflict_ReturnsConflictWithoutInvalidation`: Verified deletion conflict maps to `Conflict` without invalidating caches.
+- `DeleteProduct_PersistenceException_ReturnsSafeFailureWithoutRetryOrInvalidation`: Verified expected persistence exception returns safe `PersistenceFailure` without leaking diagnostics.
+- `DeleteProduct_CommitOrdering_InvalidationCannotPrecedeSuccessfulDeletion`: Verified that during in-flight deletion, cache invalidation has not occurred; upon confirmed completion, invalidation executes once.
+- `DeleteProduct_CommitOrdering_UnsuccessfulDeletionDoesNotInvalidate`: Verified that failed deletion never triggers cache invalidation.
+
+---
+
+## 8. Troubleshooting
 
 - **CS8619 / Nullability Warnings**: When configuring `IAppCache.CachedAsync<T>`, the return type is `Task<T?>`. The helper in `CacheMockExtensions.cs` uses `async (key, factory, token) => (T?)await factory(token)` to ensure type safety.
 - **MSTEST0037 Analyzer Compliance**: Use MSTest's specialized assertion methods (`Assert.HasCount`, `Assert.IsEmpty`, `Assert.Contains`) for collection and string assertions rather than generic `Assert.AreEqual` / `Assert.IsTrue`.
 - **Microsoft.Testing.Platform Runner**: Configured in `global.json` under `"test": { "runner": "Microsoft.Testing.Platform" }`. Use `dotnet test --project <path>` rather than combining with legacy VSTest switches.
+- **Mock Verification for Completed Writes**: When using `VerifyNoOtherCalls()`, ensure all invoked mock methods (including writes that throw expected exceptions) are explicitly verified with `Times.Once`.
